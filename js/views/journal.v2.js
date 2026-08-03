@@ -276,7 +276,7 @@ export async function detail(id, nav, query) {
   const meta = [weekdayCN(r.date), (r.weather || ''), tempLabel(r)].filter(Boolean).join(' · ');
   const contentEl = h('div', { class: 'd-content' });
   await renderBody(contentEl, r.content, nav);
-  const content = h('div', {},
+  const content = h('div', { class: 'detail-card' },
     h('div', { class: 'd-head' },
       h('span', { class: 'd-emoji' }, r.mood || '😊'),
       h('div', {},

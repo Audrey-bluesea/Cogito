@@ -147,7 +147,7 @@ export async function detail(id, nav, query) {
   const title = (r.title || '').trim();
   const contentEl = h('div', { class: 'd-content', style: { marginTop: '.5rem' } });
   await renderBody(contentEl, r.content, nav);
-  const content = h('div', {},
+  const content = h('div', { class: 'detail-card' },
     h('div', { class: 'd-head' },
       h('span', { class: 'badge ' + (CAT_COLOR[r.category] || '') }, r.category || 'Misc'),
       h('span', { class: 'd-meta' }, fmtDateTime(r.time))
