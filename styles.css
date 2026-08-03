@@ -609,13 +609,13 @@ body.editing .tabbar { transform: translateY(110%); opacity: 0; pointer-events: 
 .card:active { transform: translateY(-2px); box-shadow: var(--shadow-hi); }
 
 /* 日记卡片：手撕/裁切感——四角不规则圆角 + 做旧纸描边 + 底部虚线撕痕（仅日记，不影响书/影/备忘卡） */
-.jcard {
+.jcard, .mcard {
   -webkit-clip-path: url(#torn);                /* 手撕边缘：不规则撕裂形状（SVG clipPath，参考图风） */
   clip-path: url(#torn);
   filter: drop-shadow(0 2px 5px rgba(180,160,120,.45));  /* drop-shadow 跟随撕裂形状，保留纸页浮起感 */
   padding-bottom: 0.55rem;                       /* 底部微留白（轻微撕裂只需少量缓冲） */
 }
-.jcard::after {
+.jcard::after, .mcard::after {
   content: '';
   position: absolute;
   left: 0; right: 0; bottom: 0; height: 1.1rem;
@@ -1125,17 +1125,17 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 }
 
 /* ═══════ 左滑操作行 ═══════ */
-/* 默认隐藏操作按钮，不裁切内部卡片（保留 jcard 不规则手撕圆角）；
-   仅在 swipe.open（左滑/长按）时才露出编辑/删除按钮。 */
+/* 操作栏固定宽、常驻在卡片下方（z-index 低于卡片），靠卡片遮挡实现"默认隐藏"；
+   左滑/长按触发 .swipe.open 时卡片平移露出按钮。 */
 .swipe { position: relative; margin-bottom: .75rem; }
 .swipe-actions {
   position: absolute; top: 0; right: 0; bottom: 0; display: flex;
-  width: 0; opacity: 0; pointer-events: none;
-  transition: width .22s ease, opacity .22s ease;
+  width: 8.8rem;                 /* 固定宽（= 两按钮），与卡片平移量一致，避免错位 */
+  pointer-events: none;          /* 默认不拦截（被卡片盖住）；打开时才可点 */
 }
-.swipe.open .swipe-actions { width: auto; opacity: 1; pointer-events: auto; }
+.swipe.open .swipe-actions { pointer-events: auto; }
 .swipe-btn {
-  width: 4.4rem; border: 0; color: #fff; font-size: .82rem; font-weight: 600;
+  flex: 1; border: 0; color: #fff; font-size: .82rem; font-weight: 600;
   display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent;
 }
 .swipe-btn.edit { background: var(--blue); }

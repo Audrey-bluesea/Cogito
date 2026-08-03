@@ -117,7 +117,7 @@ function card(r, nav, q) {
       bodyText = plain || '';
     }
   }
-  const c = h('div', { class: 'card' },
+  const c = h('div', { class: 'card mcard' },
     h('div', { class: 'row between' },
       h('span', { class: 'badge ' + (CAT_COLOR[r.category] || '') }, r.category || 'Misc'),
       h('span', { style: { fontSize: '.72rem', color: 'var(--muted)' } }, fmtDateTime(r.time))
