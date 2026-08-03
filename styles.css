@@ -613,7 +613,7 @@ body.editing .tabbar { transform: translateY(110%); opacity: 0; pointer-events: 
   -webkit-clip-path: url(#torn);                /* 手撕边缘：不规则撕裂形状（SVG clipPath，参考图风） */
   clip-path: url(#torn);
   filter: drop-shadow(0 2px 5px rgba(180,160,120,.45));  /* drop-shadow 跟随撕裂形状，保留纸页浮起感 */
-  padding-bottom: 1.5rem;                        /* 底部留白，避免文字被撕裂齿切到 */
+  padding-bottom: 0.55rem;                       /* 底部微留白（轻微撕裂只需少量缓冲） */
 }
 .jcard::after {
   content: '';
