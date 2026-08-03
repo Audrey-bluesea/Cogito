@@ -191,7 +191,7 @@ export async function detail(id, nav, query) {
     actions: [
       h('button', { class: 'icon-btn', onclick: () => nav('#/books/' + id), 'aria-label': '编辑' }, '✏️')
     ],
-    content
+    content: h('div', { class: 'detail-card' }, content)
   });
 }
 
