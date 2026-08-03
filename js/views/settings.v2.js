@@ -26,6 +26,7 @@ export async function list(nav) {
         try { applyTheme(payload.theme); } catch (e) {}
       }
       toast(`已恢复 ${n} 条数据`);
+      setTimeout(() => location.reload(), 900);   /* 重载以刷新内存态，杜绝任何渲染不一致 */
     } catch (e) {
       toast('导入失败：' + (e.message || e));
     }
