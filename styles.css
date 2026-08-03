@@ -610,15 +610,20 @@ body.editing .tabbar { transform: translateY(110%); opacity: 0; pointer-events: 
 
 /* 日记卡片：手撕/裁切感——四角不规则圆角 + 做旧纸描边 + 底部虚线撕痕（仅日记，不影响书/影/备忘卡） */
 .jcard {
-  border-radius: 24px 10px 20px 13px;            /* 四角明显不规则，模仿手裁 */
-  border: 1px solid var(--border);              /* 做旧纸色描边（#E8DCB8），像纸的边缘 */
-  box-shadow: 0 3px 11px rgba(232,220,184,.5);  /* 黄页/做旧纸 轻度阴影，从页面浮起 */
+  -webkit-clip-path: url(#torn);                /* 手撕边缘：不规则撕裂形状（SVG clipPath，参考图风） */
+  clip-path: url(#torn);
+  filter: drop-shadow(0 2px 5px rgba(180,160,120,.45));  /* drop-shadow 跟随撕裂形状，保留纸页浮起感 */
+  padding-bottom: 1.5rem;                        /* 底部留白，避免文字被撕裂齿切到 */
 }
 .jcard::after {
   content: '';
   position: absolute;
-  left: 1rem; right: 1rem; bottom: .4rem;
-  border-top: 1px dashed rgba(200,185,150,.6);  /* 撕痕虚线（kraft 色，极淡但可见）*/
+  left: 0; right: 0; bottom: 0; height: 1.1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='20'%3E%3Cg stroke='%23B8A079' stroke-width='0.7' opacity='0.45'%3E%3Cpath d='M2 18 L7 5 M14 19 L19 6 M26 18 L31 4 M38 19 L43 7 M50 18 L55 5 M62 19 L67 6 M74 18 L79 4 M86 19 L91 7 M98 18 L103 5 M110 19 L115 6'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  mix-blend-mode: multiply;
+  opacity: .55;
+  pointer-events: none;
 }
 
 /* 体重趋势 sparkline 卡（Flow 页，纯折线 + 各点小数值） */
