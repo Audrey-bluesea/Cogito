@@ -6,6 +6,8 @@
 
 当前本地仓库状态：已 `git init` 并提交 v54（含手撕卡修复、做旧牛皮纸噪点、
 各主题彩色底恢复）。`sw.js` 缓存版本 `cogito-v54`。
+**✅ 初始推送已完成**：`main` 分支已上线 GitHub（remote = `Audrey-bluesea/Cogito`，
+本地 remote 已指向规范名 `Cogito`）。下面的第 2 步可跳过，直接从第 3 步连 Cloudflare 开始。
 
 ---
 
@@ -13,7 +15,7 @@
 
 ### 第 1 步 · 在 GitHub 建一个仓库
 - 打开 https://github.com/new
-- Repository name 填 `cogito`，选 **Public**（私有也行，但 Pages 免费需 public 或 Pro）
+- Repository name 填 `Cogito`，选 **Public**（私有也行，但 Pages 免费需 public 或 Pro）
 - **不要**勾选 "Add a README"（本地已有内容）
 - 点 Create repository
 
@@ -22,16 +24,16 @@
 
 ```bash
 cd /Users/leeshukyuen/WorkBuddy/2026-07-31-23-01-57/cogito
-git remote add origin https://github.com/<你的用户名>/cogito.git
+git remote add origin https://github.com/<你的用户名>/Cogito.git
 git branch -M main
 git push -u origin main
 ```
 
-> 如果装了 GitHub CLI（`gh`），也可：`gh repo create cogito --public --source=. --push`
+> 如果装了 GitHub CLI（`gh`），也可：`gh repo create Cogito --public --source=. --push`
 
 ### 第 3 步 · Cloudflare Pages 关联部署
 - 打开 https://dash.cloudflare.com/ → 左侧 **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-- 授权并选择刚才的 `cogito` 仓库
+- 授权并选择刚才的 `Cogito` 仓库
 - 构建设置：
   - Framework preset：**None**
   - Build command：**留空**
