@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# 早期遗留的非 app 文件
+_flow_result.png
+
+# 日志 / 临时
+*.log

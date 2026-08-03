@@ -1,0 +1,892 @@
+/* ═══════════════════════════════════════════════════
+   ui.js — DOM 工具 + 通用组件（Toast / 确认框 / 星级 /
+   图片选择 / 表单控件 / 长按删除）
+   ═══════════════════════════════════════════════════ */
+
+import { db, getCustomOptions, addCustomOption, renameCustomOption, deleteCustomOption, updateRecordsField } from './db.v2.js';
+
+/* ---------- DOM ---------- */
+export function h(tag, props = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'dataset') Object.assign(el.dataset, v);
+    else if (k in el && k !== 'list' && typeof v !== 'object') { try { el[k] = v; } catch { el.setAttribute(k, v); } }
+    else el.setAttribute(k, v);
+  }
+  children.flat(Infinity).forEach(c => {
+    if (c === null || c === undefined || c === false) return;
+    el.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+  });
+  return el;
+}
+export const frag = (...nodes) => { const f = document.createDocumentFragment(); nodes.flat(Infinity).filter(Boolean).forEach(n => f.appendChild(n)); return f; };
+
+/* ---------- 日期 ---------- */
+const WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+export const pad = n => String(n).padStart(2, '0');
+export function todayISO(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+export function nowLocalDT(d = new Date()) { return `${todayISO(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+export function weekdayCN(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+  return isNaN(d) ? '' : WEEK[d.getDay()];
+}
+export function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso.length <= 10 ? iso + 'T00:00:00' : iso);
+  return isNaN(d) ? iso : `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+}
+export function fmtDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d) ? iso : `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+export function fmtMonth(iso) {
+  if (!iso) return '';
+  const [y, m] = iso.split('-');
+  return m ? `${y} 年 ${Number(m)} 月` : y;
+}
+export const dayOf = iso => (iso || '').slice(8, 10);
+export const monOf = iso => { const m = (iso || '').slice(5, 7); return m ? `${Number(m)}月` : ''; };
+
+/* ---------- Toast ---------- */
+export function toast(msg, ms = 2000) {
+  const host = document.getElementById('toast-host');
+  const t = h('div', { class: 'toast' }, msg);
+  host.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 250); }, ms);
+}
+
+/* ---------- 底部确认框 ---------- */
+export function confirmSheet({ title = '确认操作', message = '', confirmText = '确定', danger = true } = {}) {
+  return new Promise(resolve => {
+    const host = document.getElementById('sheet-host');
+    const close = val => { host.classList.remove('on'); host.innerHTML = ''; resolve(val); };
+    const sheet = h('div', { class: 'sheet' },
+      h('h3', {}, title),
+      message ? h('p', {}, message) : null,
+      h('div', { class: 'sheet-btns' },
+        h('button', { class: 'sheet-btn ' + (danger ? 'danger' : 'cancel'), onclick: () => close(true) }, confirmText),
+        h('button', { class: 'sheet-btn cancel', onclick: () => close(false) }, '取消')
+      )
+    );
+    host.innerHTML = '';
+    host.appendChild(h('div', { class: 'sheet-mask', onclick: () => close(false) }));
+    host.appendChild(sheet);
+    host.classList.add('on');
+  });
+}
+
+/* ---------- 长按删除 ---------- */
+/* 给任意卡片元素绑定长按手势：touch 或鼠标按住约 550ms 后触发 onTrigger。
+   自动过滤滚动 / 位移，触发后抑制随之而来的点击事件，避免误跳转。
+   返回原元素（不包裹），可直接当作卡片节点使用。 */
+export function longPress(el, onTrigger) {
+  let timer = null, lpFired = false, sx = 0, sy = 0;
+  const DUR = 550, TOL = 12;
+  const clear = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    el.classList.remove('lp-pending');
+  };
+  const start = (x, y) => {
+    sx = x; sy = y; lpFired = false;
+    el.classList.add('lp-pending');
+    timer = setTimeout(() => {
+      lpFired = true; clear(); el.classList.add('lp-active');
+      if (navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
+      /* 抑制紧接着在卡片上的点击，防止跳转进详情 */
+      const kill = e => {
+        document.removeEventListener('click', kill, true);
+        el.classList.remove('lp-active');
+        if (el.contains(e.target)) { e.stopPropagation(); e.preventDefault(); lpFired = false; }
+      };
+      document.addEventListener('click', kill, true);
+      onTrigger();
+    }, DUR);
+  };
+  const move = (x, y) => {
+    if (timer && (Math.abs(x - sx) > TOL || Math.abs(y - sy) > TOL)) clear();
+  };
+  /* 触摸端 */
+  el.addEventListener('touchstart', e => { const t = e.touches[0]; start(t.clientX, t.clientY); }, { passive: true });
+  el.addEventListener('touchmove', e => { const t = e.touches[0]; move(t.clientX, t.clientY); }, { passive: true });
+  el.addEventListener('touchend', clear);
+  el.addEventListener('touchcancel', clear);
+  /* 桌面端（鼠标长按，便于测试）*/
+  el.addEventListener('mousedown', e => {
+    start(e.clientX, e.clientY);
+    const up = () => { clear(); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mouseup', up);
+  });
+  el.addEventListener('mousemove', e => { if (timer) move(e.clientX, e.clientY); });
+  /* 阻止 iOS 长按弹出系统菜单 / 选择 */
+  el.addEventListener('contextmenu', e => { if (lpFired) e.preventDefault(); });
+  return el;
+}
+
+/* ---------- 左滑操作行（露出 编辑 / 删除）---------- */
+const _openRows = new Set();
+function _closeOthers() { _openRows.forEach(w => { if (w._close) w._close(); }); }
+
+/**
+ * 把一张卡片包成可左滑的行。
+ * @param card 原始卡片元素
+ * @param opts.onEdit  点击「编辑」时触发
+ * @param opts.onDelete 点击「删除」时触发
+ * @param opts.onTap   未展开时单击卡片（通常进入详情）
+ * 行为：触摸横向滑动 / 鼠标拖拽 露出右侧按钮；长按（桌面兜底）展开；纵向滑动交还页面滚动；单击触发 onTap。
+ */
+export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
+  const wrap = h('div', { class: 'swipe' });
+  const editBtn = h('button', { class: 'swipe-btn edit', type: 'button' }, '编辑');
+  const delBtn = h('button', { class: 'swipe-btn del', type: 'button' }, '删除');
+  const actions = h('div', { class: 'swipe-actions' }, editBtn, delBtn);
+  wrap.appendChild(actions);
+  wrap.appendChild(card);
+
+  let startX = 0, startY = 0, curX = 0;
+  let dragging = false, decided = false, horiz = false, opened = false, lpFired = false, suppressClick = false;
+  let lpTimer = null;
+  const ACT_W = () => actions.offsetWidth || 150;
+  const setX = (v) => { curX = v; card.style.transform = `translateX(${v}px)`; };
+  const _close = () => {
+    opened = false; wrap.classList.remove('open'); _openRows.delete(wrap);
+    card.style.transition = 'transform .25s'; setX(0);
+  };
+  const _open = () => {
+    opened = true; wrap.classList.add('open'); _openRows.add(wrap); _closeOthers();
+    card.style.transition = 'transform .25s'; setX(-ACT_W());
+  };
+  wrap._close = _close;
+
+  editBtn.addEventListener('click', e => { e.stopPropagation(); _close(); onEdit && onEdit(); });
+  delBtn.addEventListener('click', e => { e.stopPropagation(); _close(); onDelete && onDelete(); });
+  card.addEventListener('click', e => {
+    if (suppressClick) { suppressClick = false; e.stopPropagation(); return; }
+    if (opened) { e.stopPropagation(); _close(); return; }
+    if (onTap) onTap();
+  });
+
+  const onStart = (x, y) => {
+    startX = x; startY = y; dragging = true; decided = false; horiz = false; lpFired = false;
+    card.style.transition = '';
+    if (lpTimer) clearTimeout(lpTimer);
+    lpTimer = setTimeout(() => {
+      lpFired = true; dragging = false;
+      if (navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
+      if (!opened) _open();
+    }, 550);
+  };
+  const onMove = (x, y, e) => {
+    if (!dragging) return;
+    const mx = x - startX, my = y - startY;
+    if (!decided) {
+      if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) > Math.abs(my); }
+      else return;
+    }
+    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    if (!horiz) { dragging = false; return; }       // 纵向 → 交还页面滚动
+    if (e && e.cancelable) e.preventDefault();          // 横向 → 阻止页面滚动
+    const max = ACT_W();
+    let v = (opened ? -max : 0) + mx;
+    v = Math.max(-max - 24, Math.min(0, v));
+    setX(v);
+  };
+  const onEnd = () => {
+    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    if (lpFired) { lpFired = false; dragging = false; return; }
+    if (!dragging) return;
+    dragging = false;
+    if (decided && horiz) {
+      suppressClick = true;                             // 拖拽后抑制原生 click，避免误触
+      if (curX < -ACT_W() / 2) _open(); else _close();
+    }
+    // 未移动（点击）交给 click 事件处理
+  };
+
+  /* 触摸端 */
+  card.addEventListener('touchstart', e => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: true });
+  card.addEventListener('touchmove', e => { const t = e.touches[0]; onMove(t.clientX, t.clientY, e); }, { passive: false });
+  card.addEventListener('touchend', onEnd);
+  card.addEventListener('touchcancel', onEnd);
+  /* 桌面端：鼠标拖拽（长按兜底由 onStart 的 lpTimer 提供）*/
+  card.addEventListener('mousedown', e => {
+    onStart(e.clientX, e.clientY);
+    const mv = ev => onMove(ev.clientX, ev.clientY, null);
+    const up = () => { onEnd(); document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+  card.addEventListener('contextmenu', e => { if (opened || lpFired) e.preventDefault(); });
+
+  return wrap;
+}
+
+/* ---------- 只读详情页外壳 ---------- */
+export function detailShell({ title, onBack, content, actions = [] }) {
+  return h('div', { class: 'page' },
+    h('header', { class: 'appbar' },
+      h('button', { class: 'icon-btn', onclick: onBack, 'aria-label': '返回' }, '‹'),
+      h('h1', { style: { fontSize: '1.15rem' } }, title),
+      ...actions
+    ),
+    h('div', { class: 'scroll' }, h('div', { class: 'detail' }, content))
+  );
+}
+
+/* ---------- 星级评分（支持半星）---------- */
+function starSVG(fillPercent) {
+  const id = 'g' + Math.random().toString(36).slice(2, 8);
+  const isMist = document.documentElement.getAttribute('data-theme') === 'mist';
+  if (isMist) {
+    // 晨雾暮光主题：竖向渐变金色（#E8D5B5 → #DCC49A），半星用 clipPath 裁切
+    return `<svg viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#E8D5B5"/><stop offset="100%" stop-color="#DCC49A"/>
+      </linearGradient>
+      <clipPath id="${id}c"><rect x="0" y="0" width="${fillPercent}%" height="24"/></clipPath>
+    </defs>
+    <path class="star-empty-bg" d="M12 2.3l2.85 6.06 6.4.86-4.72 4.42 1.2 6.5L12 16.95 6.27 20.14l1.2-6.5L2.75 9.22l6.4-.86z"/>
+    <path d="M12 2.3l2.85 6.06 6.4.86-4.72 4.42 1.2 6.5L12 16.95 6.27 20.14l1.2-6.5L2.75 9.22l6.4-.86z"
+      fill="url(#${id})" clip-path="url(#${id}c)" stroke="#DCC49A" stroke-width=".9" stroke-linejoin="round"/></svg>`;
+  }
+  return `<svg viewBox="0 0 24 24">
+    <defs><linearGradient id="${id}">
+      <stop class="star-fill" offset="${fillPercent}%"/><stop class="star-empty" offset="${fillPercent}%"/>
+    </linearGradient></defs>
+    <path d="M12 2.3l2.85 6.06 6.4.86-4.72 4.42 1.2 6.5L12 16.95 6.27 20.14l1.2-6.5L2.75 9.22l6.4-.86z"
+      fill="url(#${id})" class="f-deco-stroke" stroke-width=".9" stroke-linejoin="round"/></svg>`;
+}
+/** 交互式评分控件；返回 { el, get(), set(v) } */
+export function starRating(value = 0, { readonly = false, onChange } = {}) {
+  let v = Number(value) || 0;
+  const stars = [];
+  const score = h('span', { class: 'star-score' }, v ? v.toFixed(1) : '');
+  const box = h('div', { class: 'stars' });
+  const paint = () => {
+    stars.forEach((s, i) => {
+      const p = Math.max(0, Math.min(1, v - i)) * 100;
+      s.innerHTML = starSVG(p);
+    });
+    score.textContent = v ? v.toFixed(1) : '';
+  };
+  for (let i = 0; i < 5; i++) {
+    const s = h('div', { class: 'star' });
+    if (!readonly) {
+      s.addEventListener('click', ev => {
+        const r = s.getBoundingClientRect();
+        const half = (ev.clientX - r.left) < r.width / 2;
+        v = i + (half ? 0.5 : 1);
+        s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
+        paint(); onChange && onChange(v);
+      });
+    }
+    stars.push(s); box.appendChild(s);
+  }
+  box.appendChild(score);
+  if (!readonly) {
+    box.appendChild(h('button', {
+      type: 'button', class: 'star-clear',
+      onclick: () => { v = 0; paint(); onChange && onChange(0); }
+    }, '清除'));
+  }
+  paint();
+  return { el: box, get: () => v, set: nv => { v = Number(nv) || 0; paint(); } };
+}
+/** 只读小星星（列表展示用）*/
+export function starsStatic(v) {
+  const box = h('div', { class: 'stars', style: { gap: '1px' } });
+  for (let i = 0; i < 5; i++) {
+    const s = h('div', { class: 'star', style: { width: '.8rem', height: '.8rem' } });
+    s.innerHTML = starSVG(Math.max(0, Math.min(1, (v || 0) - i)) * 100);
+    box.appendChild(s);
+  }
+  if (v) box.appendChild(h('span', { style: { marginLeft: '.25rem', fontSize: '.7rem', color: 'var(--muted)' } }, v.toFixed(1)));
+  return box;
+}
+
+/* ---------- 图片选择（相册）+ 压缩 ---------- */
+export function compressImage(file, maxW = 720, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), ht = Math.round(img.height * scale);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = ht;
+        cv.getContext('2d').drawImage(img, 0, 0, w, ht);
+        try { resolve(cv.toDataURL('image/jpeg', quality)); }
+        catch { resolve(fr.result); }
+      };
+      img.onerror = reject;
+      img.src = fr.result;
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+/** 封面/海报上传控件；返回 { el, get() } */
+export function imagePicker(initial = '', placeholderEmoji = '📖') {
+  let data = initial || '';
+  const preview = h('div', { class: 'up-preview' });
+  const paint = () => {
+    preview.innerHTML = '';
+    if (data) preview.appendChild(h('img', { src: data, alt: '' }));
+    else preview.appendChild(h('span', {}, placeholderEmoji));
+  };
+  const input = h('input', {
+    type: 'file', accept: 'image/*', style: { display: 'none' },
+    onchange: async e => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try { data = await compressImage(f); paint(); toast('图片已添加 🌿'); }
+      catch { toast('图片读取失败'); }
+      input.value = '';
+    }
+  });
+  const el = h('div', { class: 'uploader' },
+    preview,
+    h('div', { class: 'up-actions' },
+      h('button', { type: 'button', class: 'btn-soft', onclick: () => input.click() }, '从相册选择'),
+      h('button', { type: 'button', class: 'btn-soft ghost', onclick: () => { data = ''; paint(); } }, '移除图片'),
+      input
+    )
+  );
+  paint();
+  return { el, get: () => data };
+}
+
+/* ---------- 正文渲染 / @关联 检索 ---------- */
+/** 去掉 HTML 标签，得到纯文本（用于列表预览 / 搜索 / 摘要）*/
+export function stripBody(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return (d.textContent || '').replace(/​/g, '').replace(/\s+/g, ' ').trim();
+}
+
+export function truncate(s, n) {
+  s = (s || '').trim();
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+/** 异步渲染正文到容器：兼容纯文本 / HTML，并把 @关联 标签变成可点击链接 */
+export async function renderBody(container, html, nav) {
+  if (!html || !html.trim()) { container.textContent = '（空白）'; return; }
+  if (html.indexOf('<') === -1) {
+    const esc = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    container.innerHTML = esc.replace(/\n/g, '<br>');
+  } else {
+    container.innerHTML = html;
+  }
+  const mentions = container.querySelectorAll('.mention[data-type][data-id]');
+  for (const m of mentions) {
+    const type = m.dataset.type, id = m.dataset.id;
+    let target = null;
+    try { target = await db.get(type === 'book' ? 'books' : 'movies', id); } catch (e) {}
+    if (target && target.title) m.textContent = (type === 'book' ? '📖' : '🎬') + '《' + target.title + '》';
+    m.classList.add('mention-link');
+    m.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); nav('#/' + (type === 'book' ? 'books' : 'movies') + '/d/' + id); });
+  }
+}
+
+/** 反向检索：找出正文里 @过 该 book / movie 的日记与备忘 */
+export async function findMentions(type, id) {
+  const out = [];
+  for (const store of ['journals', 'memos']) {
+    const rows = await db.all(store);
+    for (const r of rows) {
+      const html = r.content || '';
+      if (html.indexOf('<') === -1) continue;            // 纯文本正文不含关联
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      if (doc.querySelector(`.mention[data-type="${type}"][data-id="${id}"]`)) out.push({ store, rec: r });
+    }
+  }
+  return out;
+}
+
+/** 构建 @关联 数据源（书籍 + 影视，按最近添加排序）*/
+export async function mentionSource() {
+  const [bs, ms] = await Promise.all([db.all('books'), db.all('movies')]);
+  const b = bs.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).map(r => ({ type: 'book', id: r.id, title: r.title }));
+  const m = ms.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).map(r => ({ type: 'movie', id: r.id, title: r.title }));
+  return [...b, ...m].filter(x => x.title);
+}
+
+/* ---------- 轻量富文本编辑器（正文内联图片） ---------- */
+export function richBody(initial = '', { withImage = true, mention = null, placeholder = '' } = {}) {
+  const editor = h('div', { class: 'rte', contenteditable: 'true', spellcheck: 'false' });
+  if (placeholder) editor.setAttribute('data-placeholder', placeholder);
+  const load = (txt) => {
+    if (txt && txt.indexOf('<') !== -1) editor.innerHTML = txt;       // 已是 HTML（含图片）
+    else editor.innerHTML = (txt || '').replace(/\n/g, '<br>');         // 旧纯文本：换行转 <br>
+  };
+  load(initial);
+  const insertAtCursor = (url) => {
+    editor.focus();
+    let ok = false;
+    try { ok = document.execCommand('insertImage', false, url); } catch (e) { ok = false; }
+    if (!ok) {
+      editor.appendChild(h('img', { src: url, class: 'rte-img', alt: '' }));
+    } else {
+      const imgs = editor.querySelectorAll('img');
+      if (imgs.length) imgs[imgs.length - 1].classList.add('rte-img');
+    }
+  };
+  const bar = h('div', { class: 'rte-bar' });
+  let fileInput;
+  if (withImage) {
+    fileInput = h('input', {
+      type: 'file', accept: 'image/*', style: { display: 'none' },
+      onchange: async (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        try { const url = await compressImage(f); insertAtCursor(url); toast('图片已插入 🌿'); }
+        catch { toast('图片读取失败'); }
+        fileInput.value = '';
+      }
+    });
+    bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, '🖼 插入图片'));
+    bar.appendChild(fileInput);
+  }
+  const wrap = h('div', { class: 'rte-wrap' }, bar, editor);
+  if (mention) attachMention(editor, mention);
+  return {
+    el: wrap,
+    get: () => editor.innerHTML,
+    set: load
+  };
+}
+
+/* ---------- @关联 下拉（日记 / 备忘正文插入书籍 / 影视）---------- */
+/**
+ * 给 contenteditable 编辑器接入 @ 触发下拉：输入 @ 弹出书籍 / 影视列表，
+ * 选中后在光标处插入不可编辑的 .mention 标签（含 data-type / data-id）。
+ *
+ * 面板挂载到 document.body（Portal 模式），避免被父容器 overflow / 键盘裁剪。
+ * 移动端自动检测可视区域，面板会向上翻转避免被键盘遮挡。
+ * @param editor   contenteditable 元素
+ * @param source   [{ type:'book'|'movie', id, title }, ...]
+ */
+function attachMention(editor, source) {
+  /* 面板挂到 body，不受父容器限制 */
+  const panel = h('div', { class: 'mention-panel' });
+  document.body.appendChild(panel);
+  let items = [], active = 0, open = false;
+
+  const close = () => { open = false; panel.style.display = 'none'; panel.innerHTML = ''; };
+
+  const renderItems = () => {
+    panel.innerHTML = '';
+    if (!items.length) { panel.appendChild(h('div', { class: 'mention-empty' }, '没有匹配的作品')); return; }
+    items.forEach((it, i) => {
+      const row = h('div', {
+        class: 'mention-item' + (i === active ? ' on' : ''),
+        onmousedown: (e) => { e.preventDefault(); choose(it); }
+      },
+        h('span', { class: 'mention-ico' }, it.type === 'book' ? '📖' : '🎬'),
+        h('span', { class: 'mention-label' }, it.title || '(无标题)')
+      );
+      panel.appendChild(row);
+    });
+  };
+
+  const caretRect = () => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    const r = sel.getRangeAt(0).cloneRange(); r.collapse(true);
+    const rect = r.getBoundingClientRect();
+    return (rect && (rect.left || rect.top)) ? rect : null;
+  };
+
+  const queryAt = () => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) return null;
+    const node = range.startContainer;
+    if (node.nodeType !== 3) return null;            // 仅支持文本节点（含 @ 的段落）
+    const text = node.textContent.slice(0, range.startOffset);
+    const at = text.lastIndexOf('@');
+    if (at === -1) return null;
+    const q = text.slice(at + 1);
+    if (/\s/.test(q)) return null;                    // 空格意味着关联已结束
+    return { at, q, node, offset: range.startOffset };
+  };
+
+  const positionPanel = () => {
+    const caret = caretRect();
+    const vv = window.visualViewport || null;
+    const vh = vv ? vv.height : window.innerHeight;
+    let top, left;
+
+    if (caret && (caret.left || caret.top)) {
+      left = (vv ? vv.offsetLeft : 0) + caret.left;
+      /* 先假设往下弹 */
+      top = (vv ? vv.offsetTop : 0) + caret.bottom + 6;
+      /* 预估面板高度（每条约 52px + padding）*/
+      const pH = Math.min(items.length, 8) * 52 + 14;
+      /* 如果底部会超出可视区，改为往上弹 */
+      if (top + pH > vh - 10) {
+        top = (vv ? vv.offsetTop : 0) + caret.top - pH - 6;
+        if (top < 4) top = 4; /* 不允许超出顶部 */
+      }
+    } else {
+      /* 兜底：编辑器下方 */
+      const er = editor.getBoundingClientRect();
+      left = (vv ? vv.offsetLeft : 0) + er.left;
+      top = (vv ? vv.offsetTop : 0) + er.bottom + 6;
+    }
+
+    panel.style.display = 'block';
+    /* 必须等 display:block 后才能读到 offsetWidth */
+    const pw = panel.offsetWidth || 260;
+    left = Math.max(4, Math.min(left, (vv ? vv.width : window.innerWidth) - pw - 4));
+    panel.style.top = top + 'px';
+    panel.style.left = left + 'px';
+  };
+
+  const openPanel = () => {
+    const info = queryAt();
+    if (!info) { close(); return; }
+    const q = info.q.toLowerCase();
+    items = (source || []).filter(s => (s.title || '').toLowerCase().includes(q)).slice(0, 8);
+    active = 0; open = true; panel.style.display = 'block';
+    renderItems(); positionPanel();
+  };
+
+  const choose = (item) => {
+    const info = queryAt();
+    if (!info || !item) { close(); return; }
+    const tn = info.node;
+    const r = document.createRange();
+    r.setStart(tn, info.at); r.setEnd(tn, info.offset);
+    r.deleteContents();
+    const span = h('span', {
+      class: 'mention', contenteditable: 'false',
+      dataset: { type: item.type, id: item.id }
+    }, (item.type === 'book' ? '📖' : '🎬') + '《' + (item.title || '') + '》');
+    r.insertNode(span);
+    const space = document.createTextNode(' ');
+    span.parentNode.insertBefore(space, span.nextSibling);
+    const after = document.createRange();
+    after.setStart(space, 1); after.collapse(true);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(after);
+    editor.focus();
+    close();
+  };
+
+  editor.addEventListener('input', openPanel);
+  editor.addEventListener('keyup', (e) => { if (e.key === ' ') close(); else openPanel(); });
+  editor.addEventListener('click', openPanel);
+  editor.addEventListener('blur', () => setTimeout(close, 150));
+  editor.addEventListener('keydown', (e) => {
+    if (!open) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % Math.max(items.length, 1); renderItems(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + items.length) % Math.max(items.length, 1); renderItems(); }
+    else if (e.key === 'Enter') { if (items.length) { e.preventDefault(); choose(items[active]); } }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+
+  /* 移动端键盘弹出/收起时重新定位面板 */
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => { if (open) positionPanel(); });
+  }
+}
+
+/* ---------- 表单控件 ---------- */
+export function field(label, control, { required = false, hint = '' } = {}) {
+  return h('div', { class: 'field' },
+    h('label', {}, label, required ? h('span', { class: 'req' }, '*') : null),
+    control,
+    hint ? h('div', { class: 'hint' }, hint) : null
+  );
+}
+
+export function input(props = {}) { return h('input', { class: 'input', ...props }); }
+
+export function textarea({ value = '', maxlength = 0, placeholder = '', small = false } = {}) {
+  const ta = h('textarea', { class: 'textarea' + (small ? ' sm' : ''), placeholder, value });
+  if (maxlength) ta.maxLength = maxlength;
+  const cnt = h('div', { class: 'counter' });
+  const grow = () => {
+    /* 先复位到 auto 再量真实内容高度，避免高度叠加误差 */
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  };
+  const upd = () => {
+    cnt.textContent = maxlength ? `${ta.value.length} / ${maxlength}` : `${ta.value.length} 字`;
+    grow();
+  };
+  ta.addEventListener('input', upd);
+  const el = h('div', { class: 'field', style: { gap: '.2rem' } }, ta, cnt);
+
+  /* 初始撑高：必须等元素真正挂载到文档、布局完成后再量 scrollHeight 才准确。
+     编辑页是异步构建的，构建时调度的 rAF 可能在挂载前就触发，量到 0 → 被 min-height 压成小框。
+     故用 MutationObserver 等挂载完成后，再多次补撑（兼容字体/图片延迟加载）。 */
+  const doGrow = () => { if (!ta.isConnected) return; grow(); };
+  const scheduleGrow = () => {
+    doGrow();
+    requestAnimationFrame(doGrow);
+    requestAnimationFrame(() => requestAnimationFrame(doGrow));
+    setTimeout(doGrow, 80);
+    setTimeout(doGrow, 250);
+  };
+  if (ta.isConnected) {
+    scheduleGrow();
+  } else {
+    const mo = new MutationObserver(() => {
+      if (ta.isConnected) { mo.disconnect(); scheduleGrow(); }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+    /* 兜底：极端情况下 observer 未命中也在 600ms 后补撑一次 */
+    setTimeout(() => { try { mo.disconnect(); } catch (e) {} scheduleGrow(); }, 600);
+  }
+  return { el, ta, get: () => ta.value };
+}
+
+export function select(options, value = '', props = {}) {
+  const s = h('select', { class: 'select', ...props });
+  options.forEach(o => {
+    const [val, txt] = Array.isArray(o) ? o : [o, o];
+    s.appendChild(h('option', { value: val, selected: val === value }, txt));
+  });
+  if (value && !options.some(o => (Array.isArray(o) ? o[0] : o) === value)) {
+    s.insertBefore(h('option', { value, selected: true }, value), s.firstChild);
+  }
+  return s;
+}
+
+/** 下拉 + 可自定义（自定义项持久化到 meta store）*/
+export async function selectCustom(key, presets, value = '', opts = {}) {
+  const custom = await getCustomOptions(key);
+  const all = [...presets, ...custom.filter(c => !presets.includes(c))];
+  const s = select([...all, ['__new__', '＋ 自定义…']], value);
+  const row = h('div', { class: 'custom-row', style: { display: 'none' } });
+  const txt = input({ placeholder: '', maxlength: 12 });
+  const ok = h('button', {
+    type: 'button', class: 'btn-soft',
+    onclick: async () => {
+      const v = txt.value.trim();
+      if (!v) return;
+      await addCustomOption(key, v);
+      s.insertBefore(h('option', { value: v }, v), s.lastChild);
+      s.value = v; row.style.display = 'none'; txt.value = '';
+      toast('已添加选项 ✨');
+    }
+  }, '添加');
+  row.append(txt, ok);
+  s.addEventListener('change', () => {
+    if (s.value === '__new__') { row.style.display = 'flex'; s.value = value || presets[0]; txt.focus(); }
+  });
+  const el = h('div', {}, s, row);
+  if (opts.store) {
+    const refreshSelect = async () => {
+      const c2 = await getCustomOptions(key);
+      const a2 = [...presets, ...c2.filter(c => !presets.includes(c))];
+      const cur = s.value === '__new__' ? (value || presets[0]) : s.value;
+      s.innerHTML = '';
+      [...a2, ['__new__', '＋ 自定义…']].forEach(([v, t]) => {
+        const o = h('option', { value: v }, t);
+        if (v === cur) o.selected = true;
+        s.appendChild(o);
+      });
+    };
+    el.appendChild(h('button', {
+      type: 'button', class: 'link-btn',
+      style: { fontSize: '.78rem', color: 'var(--accent)', marginTop: '.35rem', display: 'block' },
+      onclick: () => manageOptions(key, presets, { ...opts, onChange: refreshSelect })
+    }, '管理自定义项'));
+  }
+  return { el, get: () => (s.value === '__new__' ? '' : s.value) };
+}
+
+/** 多选（类型 / 标签等）：预设 + 自定义持久化，可多选切换。get() 返回数组 */
+export async function multiSelectCustom(key, presets, values = []) {
+  const init = Array.isArray(values) ? values : (values ? [values] : []);
+  const sel = new Set(init.filter(Boolean));
+  const custom = await getCustomOptions(key);
+  const box = h('div', { class: 'radio-group' });
+  const renderChips = () => {
+    box.innerHTML = '';
+    const cur = [...presets, ...custom.filter(c => !presets.includes(c))];
+    cur.forEach(o => {
+      const b = h('div', {
+        class: 'radio-opt' + (sel.has(o) ? ' on' : ''),
+        onclick: () => { sel.has(o) ? sel.delete(o) : sel.add(o); b.classList.toggle('on'); }
+      }, o);
+      box.appendChild(b);
+    });
+    box.appendChild(h('div', { class: 'radio-opt add-opt', onclick: showAdd }, '＋ 自定义…'));
+  };
+  const showAdd = () => {
+    const row = h('div', { class: 'custom-row' });
+    const txt = input({ placeholder: '输入新类型', maxlength: 12 });
+    const ok = h('button', {
+      type: 'button', class: 'btn-soft',
+      onclick: async () => {
+        const v = txt.value.trim();
+        if (!v) return;
+        await addCustomOption(key, v);
+        if (!custom.includes(v)) custom.push(v);
+        sel.add(v);
+        renderChips();
+        toast('已添加 ✨');
+      }
+    }, '添加');
+    row.append(txt, ok);
+    box.appendChild(row);
+    txt.focus();
+  };
+  renderChips();
+  const el = h('div', {}, box);
+  return { el, get: () => [...sel] };
+}
+
+/** 自定义选项管理弹窗：列出全部自定义项，支持重命名 / 删除。
+   opts.store + opts.field 提供时，会联动把使用该选项的记录改回默认 / 重命名。 */
+export function manageOptions(key, presets, opts = {}) {
+  const { store, field, onChange } = opts || {};
+  const host = document.getElementById('sheet-host');
+  const close = () => { host.classList.remove('on'); host.innerHTML = ''; };
+
+  const doDelete = async (name) => {
+    const ok = await confirmSheet({
+      title: '删除这个选项？',
+      message: store ? `使用「${name}」的记录会改回默认分类` : '删除后无法恢复',
+      confirmText: '删除', danger: true
+    });
+    if (!ok) return;
+    await deleteCustomOption(key, name);
+    if (store) await updateRecordsField(store, field, name, presets[0] || '');
+    toast('已删除');
+    if (onChange) await onChange();
+    render();
+  };
+
+  const startRename = (row, old) => {
+    const inp = input({
+      value: old, maxlength: 12,
+      style: { flex: '1', padding: '.4rem .5rem', fontSize: '.95rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--card)', color: 'var(--text)' }
+    });
+    const commit = async () => {
+      const nv = inp.value.trim();
+      if (!nv || nv === old) { render(); return; }
+      await renameCustomOption(key, old, nv);
+      if (store) await updateRecordsField(store, field, old, nv);
+      toast('已重命名');
+      if (onChange) await onChange();
+      render();
+    };
+    row.replaceChildren(
+      inp,
+      h('button', { class: 'sheet-btn', style: { padding: '.3rem .7rem' }, onclick: commit }, '确定'),
+      h('button', { class: 'sheet-btn cancel', style: { padding: '.3rem .7rem' }, onclick: render }, '取消')
+    );
+    setTimeout(() => inp.focus(), 30);
+  };
+
+  const render = async () => {
+    const custom = await getCustomOptions(key);
+    const list = custom.filter(c => !presets.includes(c));
+    const body = h('div', { style: { maxHeight: '52vh', overflowY: 'auto', marginTop: '.3rem' } });
+    if (!list.length) {
+      body.appendChild(h('p', { style: { color: 'var(--muted)', fontSize: '.82rem', textAlign: 'center', padding: '.9rem 0' } }, '还没有自定义选项'));
+    }
+    list.forEach(name => {
+      const row = h('div', { style: { display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.6rem 0', borderBottom: '1px solid var(--border)' } },
+        h('span', { style: { flex: '1', fontSize: '.95rem', color: 'var(--text)' } }, name),
+        h('button', { class: 'icon-btn', onclick: () => startRename(row, name) }, '✎'),
+        h('button', { class: 'icon-btn', onclick: () => doDelete(name) }, '🗑')
+      );
+      body.appendChild(row);
+    });
+    sheet.replaceChildren(
+      h('h3', {}, '管理分类'),
+      body,
+      h('div', { class: 'sheet-btns' }, h('button', { class: 'sheet-btn cancel', onclick: close }, '完成'))
+    );
+  };
+
+  const sheet = h('div', { class: 'sheet' });
+  host.innerHTML = '';
+  host.appendChild(h('div', { class: 'sheet-mask', onclick: close }));
+  host.appendChild(sheet);
+  host.classList.add('on');
+  render();
+}
+
+/** 单选按钮组 */
+export function radioGroup(options, value = '') {
+  let v = value || options[0];
+  const box = h('div', { class: 'radio-group' });
+  const opts = options.map(o => {
+    const b = h('div', { class: 'radio-opt' + (o === v ? ' on' : ''), onclick: () => { v = o; opts.forEach(x => x.classList.toggle('on', x.textContent === v)); } }, o);
+    box.appendChild(b); return b;
+  });
+  return { el: box, get: () => v };
+}
+
+/** Emoji 心情选择器 */
+export function emojiPicker(list, value) {
+  let v = value || list[0];
+  const box = h('div', { class: 'emoji-grid' });
+  const opts = list.map(e => {
+    const b = h('div', { class: 'emoji-opt' + (e === v ? ' on' : ''), onclick: () => { v = e; opts.forEach((x, i) => x.classList.toggle('on', list[i] === v)); } }, e);
+    box.appendChild(b); return b;
+  });
+  return { el: box, get: () => v };
+}
+
+/* ---------- 页面骨架 ---------- */
+export function pageShell({ title, sub = '', actions = [], toolbar = null, stats = null, content }) {
+  return h('div', { class: 'page' },
+    h('header', { class: 'appbar' },
+      h('h1', {}, sub ? h('span', { class: 'sub' }, sub) : null, title),
+      ...actions
+    ),
+    stats,
+    toolbar,
+    h('div', { class: 'scroll' }, content)
+  );
+}
+
+export function editorShell({ title, onBack, form, onSave, saveText = '保存' }) {
+  return h('div', { class: 'page' },
+    h('header', { class: 'appbar' },
+      h('button', { class: 'icon-btn', onclick: onBack, 'aria-label': '返回' }, '‹'),
+      h('h1', { style: { fontSize: '1.15rem' } }, title)
+    ),
+    h('div', { class: 'scroll' }, h('div', { class: 'form' }, form)),
+    h('div', { class: 'savebar' }, h('button', { class: 'btn-primary', onclick: onSave }, saveText))
+  );
+}
+
+export function emptyState(emoji, title, desc) {
+  return h('div', { class: 'empty' },
+    h('span', { class: 'emo' }, emoji),
+    h('p', { style: { fontWeight: '600', color: 'var(--text)' } }, title),
+    h('p', {}, desc)
+  );
+}
+
+/** 模块内搜索 → 升级为全局搜索的入口行 */
+export function globalSearchRow(q, nav) {
+  const kw = (q || '').trim();
+  return h('div', {
+    class: 'go-global',
+    onclick: () => nav('#/search?q=' + encodeURIComponent(kw))
+  },
+    h('span', { class: 'gg-ico' }, '🌐'),
+    h('span', { class: 'gg-text' }, `在全部内容中搜索「${truncate(kw, 12)}」`),
+    h('span', { class: 'gg-arrow' }, '›')
+  );
+}

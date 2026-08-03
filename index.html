@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#D9B8A4">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="我思故我在">
+<meta name="description" content="我思故我在 — 日记、备忘录、书籍与影视收藏的个人生活中心">
+<title>我思故我在</title>
+<link rel="manifest" href="./manifest.json?v=20260801">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css?v=20260801">
+</head>
+<body>
+
+<!-- ═══════ 装饰层（颜色随主题切换，由 CSS .f-* 类驱动）═══════ -->
+<div class="decor" aria-hidden="true">
+  <!-- 统一装饰：海浪线 + 橄榄枝 + 向日葵（全主题共用，海风亚麻风格） -->
+
+  <!-- 统一装饰：手绘水彩向日葵（图片） -->
+  <img class="d d-sunflower" src="icons/sunflower.png" alt="" aria-hidden="true" />
+</div>
+
+<!-- ═══════ 应用主体 ═══════ -->
+<div id="app">
+  <main id="view" class="view" role="main"></main>
+
+  <nav id="tabbar" class="tabbar" role="tablist">
+    <a class="tab" href="#/flow" data-tab="flow" role="tab">
+      <span class="tab-ico">🌳</span><span class="tab-txt">Flow</span>
+    </a>
+    <a class="tab" href="#/journals" data-tab="journals" role="tab">
+      <span class="tab-ico">📖</span><span class="tab-txt">Journals</span>
+    </a>
+    <a class="tab" href="#/memos" data-tab="memos" role="tab">
+      <span class="tab-ico">📕</span><span class="tab-txt">Notes</span>
+    </a>
+    <a class="tab" href="#/books" data-tab="books" role="tab">
+      <span class="tab-ico">📚</span><span class="tab-txt">Books</span>
+    </a>
+    <a class="tab" href="#/movies" data-tab="movies" role="tab">
+      <span class="tab-ico">🎬</span><span class="tab-txt">Moives</span>
+    </a>
+  </nav>
+</div>
+
+<div id="toast-host" class="toast-host" aria-live="polite"></div>
+<div id="sheet-host" class="sheet-host"></div>
+
+<script type="module" src="./js/app.v2.js"></script>
+</body>
+</html>
