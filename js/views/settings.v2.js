@@ -38,7 +38,7 @@ export async function list(nav) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `我思故我在-备份-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `Cogito-备份-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast('已导出备份文件');

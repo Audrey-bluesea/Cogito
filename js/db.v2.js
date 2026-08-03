@@ -12,7 +12,7 @@ let _dbp = null;
 
 /** 数据写入后广播，供视图层做"当前页即时刷新"（双保险，覆盖 iOS 左滑等导航事件未触发的场景） */
 function notifyDbChange(store, id) {
-  try { if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cozymemo:dbchange', { detail: { store, id } })); } catch (e) {}
+  try { if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cogito:dbchange', { detail: { store, id } })); } catch (e) {}
 }
 
 function openDB() {
@@ -96,7 +96,7 @@ export const db = {
     for (const s of STORES) out[s] = await this.all(s);
     let theme = null;
     try { theme = localStorage.getItem('memo-theme'); } catch (e) {}
-    return { app: '我思故我在', version: 1, exportedAt: new Date().toISOString(), theme, data: out };
+    return { app: 'Cogito · 我思故我在', version: 1, exportedAt: new Date().toISOString(), theme, data: out };
   },
   /** 从备份导入全部数据（覆盖所有表 + 恢复主题偏好，按 id 覆盖同名记录）*/
   async importAll(payload) {

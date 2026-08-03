@@ -1,7 +1,7 @@
 {
-  "name": "我思故我在",
-  "short_name": "我思故我",
-  "description": "我思故我在 — 日记、备忘录、书籍与影视收藏的个人生活中心",
+  "name": "Cogito · 我思故我在",
+  "short_name": "Cogito",
+  "description": "Cogito · 我思故我在 — 日记、备忘录、书籍与影视收藏的个人生活中心",
   "id": "/",
   "start_url": "./",
   "scope": "./",

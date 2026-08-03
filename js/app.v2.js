@@ -87,7 +87,7 @@ async function render() {
 
 window.addEventListener('hashchange', render);
 window.addEventListener('popstate', render);            /* 覆盖 iOS PWA 系统左滑返回：导航事件未触发时也重渲染 */
-window.addEventListener('cozymemo:dbchange', render);  /* 数据变更即刷新当前视图（双保险） */
+window.addEventListener('cogito:dbchange', render);  /* 数据变更即刷新当前视图（双保险） */
 
 /* ---------- 禁止缩放（iOS Safari 双指 / 双击）---------- */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
