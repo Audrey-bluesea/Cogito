@@ -587,7 +587,7 @@ body.editing .tabbar { transform: translateY(110%); opacity: 0; pointer-events: 
   font-size: .64rem; letter-spacing: .04em;
   transition: color .2s ease;
 }
-.tab .tab-ico { font-size: 1.28rem; line-height: 1.1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); opacity(.72); }
+.tab .tab-ico { font-size: 1.28rem; line-height: 1.1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); opacity: .72; }
 .tab.on { color: var(--text); font-weight: 700; }
 .tab.on .tab-ico { transform: translateY(-2px) scale(1.14); opacity: 1; }
 .tab-ico.tab-tw { width: 1.45rem; height: 1.45rem; vertical-align: -.34em; }
