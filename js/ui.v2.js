@@ -474,21 +474,39 @@ export function richBody(initial = '', { withImage = true, mention = null, place
  */
 function attachMention(editor, source) {
   try {
-    /* 清理旧面板（防御性，避免反复进出编辑器时堆积） */
-    document.querySelectorAll('.mention-panel').forEach(p => p.remove());
+    /* 清理旧面板/遮罩（防御性，避免反复进出编辑器时堆积） */
+    document.querySelectorAll('.mention-panel, .mention-scrim').forEach(p => p.remove());
+    if (window.__mentionNav) { window.removeEventListener('hashchange', window.__mentionNav); window.__mentionNav = null; }
 
-    /* 面板挂在编辑器父容器 .rte-wrap 内，紧贴编辑器下方 */
-    const wrap = editor.closest('.rte-wrap');
+    /* 面板与遮罩都挂在 body 上，做成从屏幕底部弹起的浮层（微信式） */
+    const scrim = h('div', { class: 'mention-scrim' });
     const panel = h('div', { class: 'mention-panel' });
-    if (wrap) wrap.appendChild(panel); else document.body.appendChild(panel);
+    document.body.appendChild(scrim);
+    document.body.appendChild(panel);
 
-    let items = [], active = 0, open = false;
+    let items = [], active = 0, open = false, captured = null;
 
-    const close = () => { open = false; panel.style.display = 'none'; panel.innerHTML = ''; };
+    const close = () => {
+      open = false; captured = null;
+      panel.classList.remove('open'); scrim.classList.remove('open');
+      setTimeout(() => { panel.style.display = 'none'; }, 220);
+      panel.innerHTML = '';
+    };
 
     const renderItems = () => {
       panel.innerHTML = '';
-      if (!items.length) { panel.appendChild(h('div', { class: 'mention-empty' }, '没有匹配的作品')); return; }
+      const head = h('div', { class: 'mention-head' },
+        h('span', { class: 'mention-title' }, '选择关联的作品'),
+        h('button', {
+          class: 'mention-close',
+          onmousedown: (e) => { e.preventDefault(); close(); },
+          ontouchstart: (e) => { e.preventDefault(); close(); }
+        }, '✕')
+      );
+      panel.appendChild(head);
+      const list = h('div', { class: 'mention-list' });
+      panel.appendChild(list);
+      if (!items.length) { list.appendChild(h('div', { class: 'mention-empty' }, '没有匹配的作品')); return; }
       items.forEach((it, i) => {
         const row = h('div', {
           class: 'mention-item' + (i === active ? ' on' : ''),
@@ -499,7 +517,7 @@ function attachMention(editor, source) {
           h('span', { class: 'mention-ico' }, icon(it.type === 'book' ? 'bookmark' : 'movie')),
           h('span', { class: 'mention-label' }, it.title || '(无标题)')
         );
-        panel.appendChild(row);
+        list.appendChild(row);
       });
     };
 
@@ -540,23 +558,32 @@ function attachMention(editor, source) {
     };
 
     const openPanel = () => {
-      try {
-        const info = queryAt();
-        if (!info) { close(); return; }
-        const q = info.q.toLowerCase();
-        items = (source || [])
-          .filter(s => (s.title || '').toLowerCase().includes(q))
-          .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN-u-kf-upper'))
-          .slice(0, 8);
-        active = 0; open = true; panel.style.display = 'block';
-        renderItems();
-      } catch { close(); }
+      const info = queryAt();
+      /* 已打开时保持（比如一次输入触发 input+keyup 两次），不闪烁、不误关 */
+      if (!info) { if (open) { /* keep */ } return; }
+      captured = info;                       // 冻结选区，失焦后仍能准确插入
+      const q = info.q.toLowerCase();
+      items = (source || [])
+        .filter(s => (s.title || '').toLowerCase().includes(q))
+        .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN-u-kf-upper'))
+        .slice(0, 60);
+      active = 0;
+      if (!open) {
+        open = true;
+        panel.style.display = 'flex';
+        scrim.classList.add('open');
+        requestAnimationFrame(() => { panel.classList.add('open'); });
+        /* 弹出即收起键盘，让底部卡片完整露出、可点选 */
+        try { editor.blur(); } catch {}
+      }
+      renderItems();
     };
 
     const choose = (item) => {
+      const info = captured;                 // 用冻结的选区，不依赖实时 selection
+      if (!info || !item) { close(); return; }
       try {
-        const info = queryAt();
-        if (!info || !item) { close(); return; }
+        if (!info.node.isConnected) { close(); return; }
         const tn = info.node;
         const r = document.createRange();
         r.setStart(tn, info.at); r.setEnd(tn, info.offset);
@@ -571,23 +598,19 @@ function attachMention(editor, source) {
         const after = document.createRange();
         after.setStart(space, 1); after.collapse(true);
         const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(after);
-        editor.focus();
         close();
+        /* 回到编辑区并重新唤起键盘，继续打字 */
+        editor.focus();
       } catch { close(); }
     };
+
+    /* 点击遮罩（面板外区域）= 取消 */
+    scrim.addEventListener('mousedown', (e) => { e.preventDefault(); close(); });
+    scrim.addEventListener('touchstart', (e) => { e.preventDefault(); close(); }, { passive: false });
 
     editor.addEventListener('input', openPanel);
     editor.addEventListener('keyup', (e) => { if (e.key === ' ') close(); else openPanel(); });
     editor.addEventListener('click', openPanel);
-    editor.addEventListener('blur', () => {
-      setTimeout(() => {
-        try {
-          const a = document.activeElement;
-          if (a === editor || panel.contains(a) || editor.contains(a)) return;
-          close();
-        } catch { close(); }
-      }, 220);
-    });
     editor.addEventListener('keydown', (e) => {
       if (!open) return;
       if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % Math.max(items.length, 1); renderItems(); }
@@ -595,6 +618,11 @@ function attachMention(editor, source) {
       else if (e.key === 'Enter') { if (items.length) { e.preventDefault(); choose(items[active]); } }
       else if (e.key === 'Escape') { e.preventDefault(); close(); }
     });
+
+    /* 离开页面（路由切换）时清掉浮层，避免残留 */
+    const onNav = () => { try { panel.remove(); scrim.remove(); } catch {} };
+    window.addEventListener('hashchange', onNav);
+    window.__mentionNav = onNav;
   } catch (err) {
     console.warn('[attachMention] 初始化失败（不影响其他功能）:', err.message);
   }

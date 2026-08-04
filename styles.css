@@ -1329,30 +1329,50 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .mi-ico { flex: 0 0 auto; font-size: .95rem; }
 .mi-text { flex: 1; min-width: 0; }
 
-/* ═══════ @关联 标签 + 下拉 ═══════ */
+/* ═══════ @关联 标签 + 底部弹层（微信式：从屏幕底部往上弹出） ═══════ */
 .mention { font-style: italic; color: var(--accent-d); cursor: pointer; }
 .mention-link:hover { text-decoration: underline; }
-/* @提及选择面板（微信群模式：内联在编辑器下方，不飘移） */
-.mention-panel {
+/* 遮罩：点击面板外区域关闭 */
+.mention-scrim {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,.18);
   display: none;
-  max-height: 15rem; overflow-y: auto;
-  width: 100%; max-width: 320px;
-  background: var(--frost); border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 6px 20px rgba(0,0,0,.14);
-  padding: .3rem; scrollbar-width: thin;
-  margin-top: .3rem;
 }
+.mention-scrim.open { display: block; }
+/* 底部弹层：固定贴屏幕底边，浮在一切之上，不再内联在编辑器里 */
+.mention-panel {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999;
+  display: none; flex-direction: column;
+  background: var(--frost); border-top: 1px solid var(--border);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -6px 24px rgba(0,0,0,.18);
+  padding: .2rem .2rem calc(.2rem + env(safe-area-inset-bottom));
+  max-height: 56vh;
+  transform: translateY(100%);
+  transition: transform .22s cubic-bezier(.2,.8,.2,1);
+}
+.mention-panel.open { transform: translateY(0); }
+.mention-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .55rem .8rem .35rem; flex: 0 0 auto;
+}
+.mention-title { font-size: .8rem; color: var(--muted); font-weight: 600; }
+.mention-close {
+  border: none; background: transparent; font-size: 1rem; line-height: 1;
+  color: var(--muted); cursor: pointer; padding: .25rem .5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.mention-list { overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .mention-item {
   display: flex; align-items: center; gap: .5rem;
-  padding: .6rem .65rem; min-height: 44px;
+  padding: .6rem .8rem; min-height: 46px;
   border-radius: .4rem; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .mention-item.on, .mention-item:active { background: var(--tint); }
 .mention-ico { font-size: .95rem; flex: 0 0 auto; }
 .mention-label { font-size: .85rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mention-empty { padding: .6rem; text-align: center; font-size: .78rem; color: var(--muted); }
+.mention-empty { padding: .8rem; text-align: center; font-size: .8rem; color: var(--muted); }
 
 /* 书籍 / 影视详情页「📎 提及此作品的日记与备忘」*/
 .backlinks { display: flex; flex-direction: column; gap: .4rem; margin-top: .4rem; }
