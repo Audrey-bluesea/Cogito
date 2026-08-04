@@ -1156,11 +1156,11 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
    左滑/长按触发 .swipe.open 时卡片平移露出按钮。 */
 .swipe { position: relative; margin-bottom: .75rem; }
 .swipe-actions {
-  position: absolute; top: .3rem; right: 0; bottom: .55rem; display: flex; z-index: 2;
+  position: absolute; top: .3rem; right: 0; bottom: .55rem; display: flex;
   width: 8.8rem;                 /* 固定宽（= 两按钮），与卡片平移量一致，避免错位 */
   pointer-events: none;          /* 默认不拦截（被卡片盖住）；打开时才可点 */
 }
-.swipe.open .swipe-actions { pointer-events: auto; }
+.swipe.open .swipe-actions { pointer-events: auto; z-index: 2; }
 .swipe-btn {
   flex: 1; border: 0; color: #fff; font-size: .82rem; font-weight: 600;
   display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent;
