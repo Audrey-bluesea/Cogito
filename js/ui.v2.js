@@ -164,8 +164,25 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   };
   wrap._close = _close;
 
-  editBtn.addEventListener('click', e => { e.stopPropagation(); _close(); onEdit && onEdit(); });
-  delBtn.addEventListener('click', e => { e.stopPropagation(); _close(); onDelete && onDelete(); });
+  /* 按钮点击：touchend + click 双绑定。
+     iOS 的 click 目标在 touchstart 即确定，且 touchend 会再合成一次 click，
+     故 touchend 中 preventDefault 抑制合成 click，600ms 内同一按钮去重，避免双触发。 */
+  const guarded = (fn) => {
+    let last = 0;
+    return (e) => {
+      if (e && e.type === 'touchend') e.preventDefault();
+      const now = (e && e.timeStamp) || performance.now();
+      if (now - last < 600) return;
+      last = now;
+      if (e) e.stopPropagation();
+      _close();
+      fn && fn();
+    };
+  };
+  editBtn.addEventListener('click', guarded(onEdit));
+  editBtn.addEventListener('touchend', guarded(onEdit), { passive: false });
+  delBtn.addEventListener('click', guarded(onDelete));
+  delBtn.addEventListener('touchend', guarded(onDelete), { passive: false });
   card.addEventListener('click', e => {
     if (suppressClick) { suppressClick = false; e.stopPropagation(); return; }
     if (opened) { e.stopPropagation(); _close(); return; }
