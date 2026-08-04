@@ -511,33 +511,24 @@ function attachMention(editor, source) {
   };
 
   const positionPanel = () => {
-    const caret = caretRect();
+    /* 锚定到编辑器上方（不追踪光标，避免键盘弹起后定位飘移） */
     const vv = window.visualViewport || null;
     const vh = vv ? vv.height : window.innerHeight;
-    let top, left;
-
-    if (caret && (caret.left || caret.top)) {
-      left = (vv ? vv.offsetLeft : 0) + caret.left;
-      /* 先假设往下弹 */
-      top = (vv ? vv.offsetTop : 0) + caret.bottom + 6;
-      /* 预估面板高度（每条约 52px + padding）*/
-      const pH = Math.min(items.length, 8) * 52 + 14;
-      /* 如果底部会超出可视区，改为往上弹 */
-      if (top + pH > vh - 10) {
-        top = (vv ? vv.offsetTop : 0) + caret.top - pH - 6;
-        if (top < 4) top = 4; /* 不允许超出顶部 */
-      }
-    } else {
-      /* 兜底：编辑器下方 */
-      const er = editor.getBoundingClientRect();
-      left = (vv ? vv.offsetLeft : 0) + er.left;
+    const vw = vv ? vv.width : window.innerWidth;
+    const er = editor.getBoundingClientRect();
+    /* 面板浮在编辑器顶边之上，间距 6px */
+    let top = (vv ? vv.offsetTop : 0) + er.top - 6;
+    let left = (vv ? vv.offsetLeft : 0) + er.left;
+    /* 预估面板高度 */
+    const pH = Math.min(items.length, 8) * 52 + 14;
+    /* 如果编辑器太靠上、面板会超出顶部 → 改为编辑器下方弹出 */
+    if (top + pH < 4) {
       top = (vv ? vv.offsetTop : 0) + er.bottom + 6;
     }
-
     panel.style.display = 'block';
-    /* 必须等 display:block 后才能读到 offsetWidth */
     const pw = panel.offsetWidth || 260;
-    left = Math.max(4, Math.min(left, (vv ? vv.width : window.innerWidth) - pw - 4));
+    left = Math.max(8, Math.min(left, vw - pw - 8));
+    top = Math.max(4, Math.min(top, vh - pH - 4));
     panel.style.top = top + 'px';
     panel.style.left = left + 'px';
   };
@@ -546,7 +537,10 @@ function attachMention(editor, source) {
     const info = queryAt();
     if (!info) { close(); return; }
     const q = info.q.toLowerCase();
-    items = (source || []).filter(s => (s.title || '').toLowerCase().includes(q)).slice(0, 8);
+    items = (source || [])
+      .filter(s => (s.title || '').toLowerCase().includes(q))
+      .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN-u-kf-upper'))
+      .slice(0, 8);
     active = 0; open = true; panel.style.display = 'block';
     renderItems(); positionPanel();
   };
