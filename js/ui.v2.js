@@ -141,6 +141,15 @@ function _closeOthers() { _openRows.forEach(w => { if (w._close) w._close(); });
  * @param opts.onTap   未展开时单击卡片（通常进入详情）
  * 行为：触摸横向滑动 / 鼠标拖拽 露出右侧按钮；长按（桌面兜底）展开；纵向滑动交还页面滚动；单击触发 onTap。
  */
+/**
+ * 把一张卡片包成可左滑的行（Pointer Events 统一触摸 / 鼠标）。
+ * @param card 原始卡片元素
+ * @param opts.onEdit  点击「编辑」时触发
+ * @param opts.onDelete 点击「删除」时触发
+ * @param opts.onTap   未展开时单击卡片（通常进入详情）
+ * 行为：横向滑动 / 鼠标拖拽 露出右侧按钮（单一可信状态源 `open` 同时驱动 class 与 pointer-events）；
+ *       纵向滑动交还页面滚动；单击卡片在「展开时收起 / 未展开时触发 onTap」。
+ */
 export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   const wrap = h('div', { class: 'swipe' });
   const editBtn = h('button', { class: 'swipe-btn edit', type: 'button' }, '编辑');
@@ -149,90 +158,58 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   wrap.appendChild(actions);
   wrap.appendChild(card);
 
-  let startX = 0, startY = 0, curX = 0;
-  let dragging = false, decided = false, horiz = false, opened = false, lpFired = false, suppressClick = false;
-  let lpTimer = null;
+  let open = false, dragging = false, decided = false, horiz = false;
+  let startX = 0, startY = 0, curX = 0, pid = null, suppressClick = false;
   const ACT_W = () => actions.offsetWidth || 150;
   const setX = (v) => { curX = v; card.style.transform = `translateX(${v}px)`; };
-  const _close = () => {
-    opened = false; wrap.classList.remove('open'); _openRows.delete(wrap);
-    card.style.transition = 'transform .25s'; setX(0);
+  const setOpen = (v) => {
+    open = v;
+    wrap.classList.toggle('open', v);
+    actions.style.pointerEvents = v ? 'auto' : 'none';   // 单一可信状态源：露出的按钮立刻可点
+    if (v) { _closeOthers(); _openRows.add(wrap); } else { _openRows.delete(wrap); }
+    card.style.transition = 'transform .25s ease';
+    setX(v ? -ACT_W() : 0);
   };
-  const _open = () => {
-    opened = true; wrap.classList.add('open'); _openRows.add(wrap); _closeOthers();
-    card.style.transition = 'transform .25s'; setX(-ACT_W());
-  };
-  wrap._close = _close;
+  setOpen(false);
+  wrap._close = () => setOpen(false);
 
-  /* 按钮点击：纯 click。
-     按钮是 card 的兄弟节点（非祖先），触摸事件不冒泡到 card，故 iOS 合成 click 会直接命中按钮；
-     左滑/长按后的手势由 card 的 touchend 统一 preventDefault，与按钮点击互不干扰。 */
-  const fireBtn = (fn) => { _close(); fn && fn(); };
-  editBtn.addEventListener('click', e => { e.stopPropagation(); fireBtn(onEdit); });
-  delBtn.addEventListener('click', e => { e.stopPropagation(); fireBtn(onDelete); });
+  // 按钮：纯 click。按钮是 card 的兄弟节点，触摸不冒泡到 card，iOS 合成 click 直接命中按钮本身。
+  const fire = (fn) => { setOpen(false); fn && fn(); };
+  editBtn.addEventListener('click', e => { e.stopPropagation(); fire(onEdit); });
+  delBtn.addEventListener('click', e => { e.stopPropagation(); fire(onDelete); });
 
-  const onStart = (x, y) => {
-    startX = x; startY = y; dragging = true; decided = false; horiz = false; lpFired = false;
-    card.style.transition = '';
-    if (lpTimer) clearTimeout(lpTimer);
-    lpTimer = setTimeout(() => {
-      lpFired = true; dragging = false;
-      if (navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
-      if (!opened) _open();
-    }, 550);
-  };
+  const onDown = (x, y, id) => { pid = id; startX = x; startY = y; dragging = true; decided = false; horiz = false; suppressClick = false; card.style.transition = ''; };
   const onMove = (x, y, e) => {
     if (!dragging) return;
     const mx = x - startX, my = y - startY;
-    if (!decided) {
-      if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) > Math.abs(my); }
-      else return;
-    }
-    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
-    if (!horiz) { dragging = false; return; }       // 纵向 → 交还页面滚动
-    if (e && e.cancelable) e.preventDefault();          // 横向 → 阻止页面滚动
+    if (!decided) { if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) > Math.abs(my); } else return; }
+    if (!horiz) { dragging = false; return; }               // 纵向 → 交还页面滚动
+    if (e && e.cancelable) e.preventDefault();
     const max = ACT_W();
-    let v = (opened ? -max : 0) + mx;
+    let v = (open ? -max : 0) + mx;
     v = Math.max(-max - 24, Math.min(0, v));
-    setX(v);
+    card.style.transition = ''; setX(v);
   };
-  const onEnd = (e) => {
-    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
-    // 长按触发 _open 后，合成 click 需抑制，否则会落到 card 上把刚开的行又关掉
-    if (lpFired) { lpFired = false; dragging = false; if (e && e.cancelable) e.preventDefault(); return; }
+  const onUp = (e) => {
     if (!dragging) return;
     dragging = false;
     if (decided && horiz) {
-      suppressClick = true;                             // 拖拽后抑制原生 click
-      if (curX < -ACT_W() / 2) _open(); else _close();
-      if (e && e.cancelable) e.preventDefault();         // 阻止 iOS 合成 click 误关卡片
-    } else {
-      // 未横向移动 = 单击：阻止合成 click 由本函数手动处理 onTap / 收起
+      suppressClick = true;                                // 拖拽后抑制 iOS 合成 click 误触
       if (e && e.cancelable) e.preventDefault();
-      suppressClick = true;
-      if (opened) _close(); else if (onTap) onTap();
+      if (curX < -ACT_W() / 2) setOpen(true); else setOpen(false);
     }
   };
 
-  /* 触摸端 */
-  card.addEventListener('touchstart', e => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: true });
-  card.addEventListener('touchmove', e => { const t = e.touches[0]; onMove(t.clientX, t.clientY, e); }, { passive: false });
-  card.addEventListener('touchend', e => onEnd(e));
-  card.addEventListener('touchcancel', e => onEnd(e));
-  /* 桌面端：鼠标拖拽（长按兜底由 onStart 的 lpTimer 提供）*/
-  card.addEventListener('mousedown', e => {
-    onStart(e.clientX, e.clientY);
-    const mv = ev => onMove(ev.clientX, ev.clientY, null);
-    const up = () => { onEnd(null); document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
-    document.addEventListener('mousemove', mv);
-    document.addEventListener('mouseup', up);
-  });
+  card.style.touchAction = 'pan-y';                       // 纵向仍可滚动，横向交给 JS
+  card.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.pointerId));
+  card.addEventListener('pointermove', e => { if (e.pointerId !== pid) return; onMove(e.clientX, e.clientY, e); });
+  card.addEventListener('pointerup', e => { if (e.pointerId !== pid) return; onUp(e); });
+  card.addEventListener('pointercancel', () => { dragging = false; });
   card.addEventListener('click', e => {
     if (suppressClick) { suppressClick = false; e.stopPropagation(); return; }
-    if (opened) { e.stopPropagation(); _close(); return; }
+    if (open) { e.stopPropagation(); setOpen(false); return; }
     if (onTap) onTap();
   });
-  card.addEventListener('contextmenu', e => { if (opened || lpFired) e.preventDefault(); });
 
   return wrap;
 }
