@@ -1,6 +1,6 @@
 /* ═══════════ 首页：🌳 时光流 Flow（日签卡片 · 最近 7 天） ═══════════ */
 import { db } from '../db.v2.js';
-import { h, icon, stripBody, truncate, weekdayCN } from '../ui.v2.js';
+import { h, icon, stripBody, truncate, weekdayCN, toast } from '../ui.v2.js';
 
 const MOD_ICO = { journals: '📖', memos: '📕', books: '📚', movies: '🎬' };
 const MOD_BAR = { journals: '#DBC4B0', memos: '#EDE0C8', books: '#C6D0C0', movies: '#88B5C6' };
@@ -338,6 +338,26 @@ function weekReview(journals, memos, books, movies, checkins) {
   );
 }
 
+/** 🟦 首页今日打卡方块：纯图形、无文字、方块+勾，点击 toggle 当天 */
+function todayCheckinBox(checkins) {
+  const todayDs = ymd(new Date());
+  const box = h('div', {
+    class: 'fc-box' + (new Set((checkins || []).map(r => r.id)).has(todayDs) ? ' checked' : ''),
+    onclick: async () => {
+      if (box.classList.contains('checked')) {
+        await db.remove('checkins', todayDs);
+        box.classList.remove('checked');
+        toast('已取消今日打卡');
+      } else {
+        await db.save('checkins', { id: todayDs, checkedAt: new Date().toISOString() });
+        box.classList.add('checked');
+        toast('✅ 今日已打卡');
+      }
+    }
+  });
+  return box;
+}
+
 /** 💫 时间回声：往年今日有记录则显示，无任何则返回 null */
 function timeEcho(journals, books, movies) {
   const now = new Date();
@@ -479,6 +499,7 @@ export async function list(nav) {
       h('div', { class: 'flow' },
         weightCard(memos, nav),
         randomEcho(journals, books, movies, nav),
+        todayCheckinBox(checkins),
         weekReview(journals, memos, books, movies, checkins),
         timeEcho(journals, books, movies),
         allBlank
