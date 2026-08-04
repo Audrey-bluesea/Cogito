@@ -164,30 +164,12 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   };
   wrap._close = _close;
 
-  /* 按钮点击：touchend + click 双绑定。
-     iOS 的 click 目标在 touchstart 即确定，且 touchend 会再合成一次 click，
-     故 touchend 中 preventDefault 抑制合成 click，600ms 内同一按钮去重，避免双触发。 */
-  const guarded = (fn) => {
-    let last = 0;
-    return (e) => {
-      if (e && e.type === 'touchend') e.preventDefault();
-      const now = (e && e.timeStamp) || performance.now();
-      if (now - last < 600) return;
-      last = now;
-      if (e) e.stopPropagation();
-      _close();
-      fn && fn();
-    };
-  };
-  editBtn.addEventListener('click', guarded(onEdit));
-  editBtn.addEventListener('touchend', guarded(onEdit), { passive: false });
-  delBtn.addEventListener('click', guarded(onDelete));
-  delBtn.addEventListener('touchend', guarded(onDelete), { passive: false });
-  card.addEventListener('click', e => {
-    if (suppressClick) { suppressClick = false; e.stopPropagation(); return; }
-    if (opened) { e.stopPropagation(); _close(); return; }
-    if (onTap) onTap();
-  });
+  /* 按钮点击：纯 click。
+     按钮是 card 的兄弟节点（非祖先），触摸事件不冒泡到 card，故 iOS 合成 click 会直接命中按钮；
+     左滑/长按后的手势由 card 的 touchend 统一 preventDefault，与按钮点击互不干扰。 */
+  const fireBtn = (fn) => { _close(); fn && fn(); };
+  editBtn.addEventListener('click', e => { e.stopPropagation(); fireBtn(onEdit); });
+  delBtn.addEventListener('click', e => { e.stopPropagation(); fireBtn(onDelete); });
 
   const onStart = (x, y) => {
     startX = x; startY = y; dragging = true; decided = false; horiz = false; lpFired = false;
@@ -214,30 +196,41 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
     v = Math.max(-max - 24, Math.min(0, v));
     setX(v);
   };
-  const onEnd = () => {
+  const onEnd = (e) => {
     if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
-    if (lpFired) { lpFired = false; dragging = false; return; }
+    // 长按触发 _open 后，合成 click 需抑制，否则会落到 card 上把刚开的行又关掉
+    if (lpFired) { lpFired = false; dragging = false; if (e && e.cancelable) e.preventDefault(); return; }
     if (!dragging) return;
     dragging = false;
     if (decided && horiz) {
-      suppressClick = true;                             // 拖拽后抑制原生 click，避免误触
+      suppressClick = true;                             // 拖拽后抑制原生 click
       if (curX < -ACT_W() / 2) _open(); else _close();
+      if (e && e.cancelable) e.preventDefault();         // 阻止 iOS 合成 click 误关卡片
+    } else {
+      // 未横向移动 = 单击：阻止合成 click 由本函数手动处理 onTap / 收起
+      if (e && e.cancelable) e.preventDefault();
+      suppressClick = true;
+      if (opened) _close(); else if (onTap) onTap();
     }
-    // 未移动（点击）交给 click 事件处理
   };
 
   /* 触摸端 */
   card.addEventListener('touchstart', e => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: true });
   card.addEventListener('touchmove', e => { const t = e.touches[0]; onMove(t.clientX, t.clientY, e); }, { passive: false });
-  card.addEventListener('touchend', onEnd);
-  card.addEventListener('touchcancel', onEnd);
+  card.addEventListener('touchend', e => onEnd(e));
+  card.addEventListener('touchcancel', e => onEnd(e));
   /* 桌面端：鼠标拖拽（长按兜底由 onStart 的 lpTimer 提供）*/
   card.addEventListener('mousedown', e => {
     onStart(e.clientX, e.clientY);
     const mv = ev => onMove(ev.clientX, ev.clientY, null);
-    const up = () => { onEnd(); document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+    const up = () => { onEnd(null); document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', mv);
     document.addEventListener('mouseup', up);
+  });
+  card.addEventListener('click', e => {
+    if (suppressClick) { suppressClick = false; e.stopPropagation(); return; }
+    if (opened) { e.stopPropagation(); _close(); return; }
+    if (onTap) onTap();
   });
   card.addEventListener('contextmenu', e => { if (opened || lpFired) e.preventDefault(); });
 
