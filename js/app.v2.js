@@ -99,15 +99,18 @@ async function render(force = false) {
   const mod = MODULES[tab];
   const cacheable = mode === 'list' && LIST_TABS.includes(tab);
   let reused = false;
+  // 仅「非强制重渲染」(返回/切换 tab 经 hashchange/popstate) 复用旧节点（瞬时 + 滚动记忆）；
+  // 强制渲染 render(true)（原地筛选/视图切换/数据变更）必须重建，否则缓存是旧状态导致筛选/月视图不生效。
+  const reuseCache = !force;
 
   let node;
   try {
-    if (cacheable && listCache.has(tab)) {
-      node = listCache.get(tab);          // 复用已渲染节点：零 DB 读取、零重建 → 无卡顿
+    if (cacheable && listCache.has(tab) && reuseCache) {
+      node = listCache.get(tab);          // 复用已渲染节点：零 DB 读取、零重建 → 返回列表瞬时 + 滚动记忆
       reused = true;
     } else if (mode === 'list') {
       node = await mod.list(nav, query);
-      if (cacheable) listCache.set(tab, node);
+      if (cacheable) listCache.set(tab, node);   // 重建后刷新缓存（反映最新筛选 / 数据）
     } else if (mode === 'detail') node = mod.detail ? await mod.detail(id, nav, query) : await mod.list(nav, query);
     else if (mode === 'checkin') node = mod.checkin ? await mod.checkin(nav, query) : await mod.list(nav, query);
     else node = mod.edit ? await mod.edit(id, nav, query) : await mod.list(nav, query);

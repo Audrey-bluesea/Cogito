@@ -1332,14 +1332,16 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 /* ═══════ @关联 标签 + 下拉 ═══════ */
 .mention { font-style: italic; color: var(--accent-d); cursor: pointer; }
 .mention-link:hover { text-decoration: underline; }
+/* @提及选择面板（微信群模式：内联在编辑器下方，不飘移） */
 .mention-panel {
-  position: fixed; z-index: 99999; display:none;
+  display: none;
   max-height: 15rem; overflow-y: auto;
-  width: 16rem; max-width: calc(100vw - 16px);
+  width: 100%; max-width: 320px;
   background: var(--frost); border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 8px 30px rgba(0,0,0,.18);
-  padding: .35rem; scrollbar-width: thin;
+  box-shadow: 0 6px 20px rgba(0,0,0,.14);
+  padding: .3rem; scrollbar-width: thin;
+  margin-top: .3rem;
 }
 .mention-item {
   display: flex; align-items: center; gap: .5rem;

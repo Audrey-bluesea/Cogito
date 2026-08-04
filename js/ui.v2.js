@@ -8,12 +8,19 @@ import { db, getCustomOptions, addCustomOption, renameCustomOption, deleteCustom
 /* ---------- DOM ---------- */
 export function h(tag, props = {}, ...children) {
   const el = document.createElement(tag);
+  // iOS Safari 坑：非原生交互元素（div/span 等）若无 cursor:pointer，
+  // 即使 addEventListener('click') 也不会派发 click 事件 → 真机按钮全失效。
+  // 这里统一给「带事件处理器的非交互标签」自动补 cursor:pointer，从源头根治。
+  const CLICKABLE = new Set(['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
   for (const [k, v] of Object.entries(props || {})) {
     if (v === null || v === undefined || v === false) continue;
     if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
     else if (k === 'html') el.innerHTML = v;
-    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k.startsWith('on') && typeof v === 'function') {
+      el.addEventListener(k.slice(2).toLowerCase(), v);
+      if (!CLICKABLE.has(el.tagName)) el.style.cursor = el.style.cursor || 'pointer';
+    }
     else if (k === 'dataset') Object.assign(el.dataset, v);
     else if (k in el && k !== 'list' && typeof v !== 'object') { try { el[k] = v; } catch { el.setAttribute(k, v); } }
     else el.setAttribute(k, v);
@@ -454,155 +461,142 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   };
 }
 
-/* ---------- @关联 下拉（日记 / 备忘正文插入书籍 / 影视）---------- */
+/* ---------- @关联 下拉（微信群模式：内联卡片，不追踪光标）---------- */
 /**
- * 给 contenteditable 编辑器接入 @ 触发下拉：输入 @ 弹出书籍 / 影视列表，
- * 选中后在光标处插入不可编辑的 .mention 标签（含 data-type / data-id）。
+ * 给 contenteditable 编辑器接入 @ 触发下拉。
  *
- * 面板挂载到 document.body（Portal 模式），避免被父容器 overflow / 键盘裁剪。
- * 移动端自动检测可视区域，面板会向上翻转避免被键盘遮挡。
+ * 【微信群模式】面板作为编辑器的内联兄弟节点（不挂 body、不用 getBoundingClientRect），
+ *           紧贴编辑器下方弹出，键盘弹起时随编辑器上移，不会飘移。
+ *           选中后在光标处插入不可编辑的 .mention 标签（含 data-type / data-id）。
+ *
  * @param editor   contenteditable 元素
  * @param source   [{ type:'book'|'movie', id, title }, ...]
  */
 function attachMention(editor, source) {
-  /* 每次进入编辑器都清理上一轮的面板，避免反复进入后 DOM 堆积 */
-  document.querySelectorAll('.mention-panel').forEach(p => p.remove());
-  /* 面板挂到 body，不受父容器限制 */
-  const panel = h('div', { class: 'mention-panel' });
-  document.body.appendChild(panel);
-  let items = [], active = 0, open = false;
+  try {
+    /* 清理旧面板（防御性，避免反复进出编辑器时堆积） */
+    document.querySelectorAll('.mention-panel').forEach(p => p.remove());
 
-  const close = () => { open = false; panel.style.display = 'none'; panel.innerHTML = ''; };
+    /* 面板挂在编辑器父容器 .rte-wrap 内，紧贴编辑器下方 */
+    const wrap = editor.closest('.rte-wrap');
+    const panel = h('div', { class: 'mention-panel' });
+    if (wrap) wrap.appendChild(panel); else document.body.appendChild(panel);
 
-  const renderItems = () => {
-    panel.innerHTML = '';
-    if (!items.length) { panel.appendChild(h('div', { class: 'mention-empty' }, '没有匹配的作品')); return; }
-    items.forEach((it, i) => {
-      const row = h('div', {
-        class: 'mention-item' + (i === active ? ' on' : ''),
-        onmousedown: (e) => { e.preventDefault(); choose(it); }
-      },
-        h('span', { class: 'mention-ico' }, icon(it.type === 'book' ? 'bookmark' : 'movie')),
-        h('span', { class: 'mention-label' }, it.title || '(无标题)')
-      );
-      panel.appendChild(row);
+    let items = [], active = 0, open = false;
+
+    const close = () => { open = false; panel.style.display = 'none'; panel.innerHTML = ''; };
+
+    const renderItems = () => {
+      panel.innerHTML = '';
+      if (!items.length) { panel.appendChild(h('div', { class: 'mention-empty' }, '没有匹配的作品')); return; }
+      items.forEach((it, i) => {
+        const row = h('div', {
+          class: 'mention-item' + (i === active ? ' on' : ''),
+          onmousedown: (e) => { e.preventDefault(); choose(it); },
+          /* 移动端触摸：touchstart 就选中，不用等 click（避免 iOS 300ms 延迟或合成 click 被拦截） */
+          ontouchstart: (e) => { e.preventDefault(); choose(it); }
+        },
+          h('span', { class: 'mention-ico' }, icon(it.type === 'book' ? 'bookmark' : 'movie')),
+          h('span', { class: 'mention-label' }, it.title || '(无标题)')
+        );
+        panel.appendChild(row);
+      });
+    };
+
+    /* 在 root 内按「全局文本偏移」定位到具体文本节点及其节点内偏移
+       （兼容 iOS 把光标放在元素节点、而非文本节点的情况）*/
+    const locate = (root, globalOffset) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let acc = 0, n;
+      while ((n = walker.nextNode())) {
+        const len = n.textContent.length;
+        if (acc + len >= globalOffset) return { node: n, acc, localOffset: globalOffset - acc };
+        acc += len;
+      }
+      return null;
+    };
+
+    const queryAt = () => {
+      try {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return null;
+        const range = sel.getRangeAt(0);
+        if (!range.collapsed) return null;
+        /* 取「编辑器开头 → 光标」的全部文本，不依赖 startContainer 是否为文本节点 */
+        const pre = range.cloneRange();
+        pre.selectNodeContents(editor); pre.setEnd(range.startContainer, range.startOffset);
+        const before = pre.toString();
+        const atGlobal = before.lastIndexOf('@');
+        if (atGlobal === -1) return null;
+        const q = before.slice(atGlobal + 1);
+        if (/\s/.test(q)) return null;
+        const pos = locate(editor, atGlobal);
+        if (!pos) return null;
+        const caretGlobal = before.length;
+        const endLocal = (caretGlobal <= pos.acc + pos.node.textContent.length)
+          ? caretGlobal - pos.acc : pos.node.textContent.length;
+        return { node: pos.node, at: pos.localOffset, offset: endLocal, q };
+      } catch { return null; }
+    };
+
+    const openPanel = () => {
+      try {
+        const info = queryAt();
+        if (!info) { close(); return; }
+        const q = info.q.toLowerCase();
+        items = (source || [])
+          .filter(s => (s.title || '').toLowerCase().includes(q))
+          .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN-u-kf-upper'))
+          .slice(0, 8);
+        active = 0; open = true; panel.style.display = 'block';
+        renderItems();
+      } catch { close(); }
+    };
+
+    const choose = (item) => {
+      try {
+        const info = queryAt();
+        if (!info || !item) { close(); return; }
+        const tn = info.node;
+        const r = document.createRange();
+        r.setStart(tn, info.at); r.setEnd(tn, info.offset);
+        r.deleteContents();
+        const span = h('span', {
+          class: 'mention', contenteditable: 'false',
+          dataset: { type: item.type, id: item.id }
+        }, (item.type === 'book' ? '📖' : '🎬') + '《' + (item.title || '') + '》');
+        r.insertNode(span);
+        const space = document.createTextNode('\u00A0');
+        span.parentNode.insertBefore(space, span.nextSibling);
+        const after = document.createRange();
+        after.setStart(space, 1); after.collapse(true);
+        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(after);
+        editor.focus();
+        close();
+      } catch { close(); }
+    };
+
+    editor.addEventListener('input', openPanel);
+    editor.addEventListener('keyup', (e) => { if (e.key === ' ') close(); else openPanel(); });
+    editor.addEventListener('click', openPanel);
+    editor.addEventListener('blur', () => {
+      setTimeout(() => {
+        try {
+          const a = document.activeElement;
+          if (a === editor || panel.contains(a) || editor.contains(a)) return;
+          close();
+        } catch { close(); }
+      }, 220);
     });
-  };
-
-  /* 在 root 内按「全局文本偏移」定位到具体文本节点及其节点内偏移
-     （兼容 iOS 把光标放在元素节点、而非文本节点的情况）*/
-  const locate = (root, globalOffset) => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let acc = 0, n;
-    while ((n = walker.nextNode())) {
-      const len = n.textContent.length;
-      if (acc + len >= globalOffset) return { node: n, acc, localOffset: globalOffset - acc };
-      acc += len;
-    }
-    return null;
-  };
-
-  const queryAt = () => {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return null;
-    const range = sel.getRangeAt(0);
-    if (!range.collapsed) return null;
-    /* 取「编辑器开头 → 光标」的全部文本，不依赖 startContainer 是否为文本节点 */
-    const pre = range.cloneRange();
-    try { pre.selectNodeContents(editor); pre.setEnd(range.startContainer, range.startOffset); }
-    catch { return null; }
-    const before = pre.toString();
-    const atGlobal = before.lastIndexOf('@');
-    if (atGlobal === -1) return null;
-    const q = before.slice(atGlobal + 1);
-    if (/\s/.test(q)) return null;                    // 空格意味着关联已结束
-    const pos = locate(editor, atGlobal);
-    if (!pos) return null;
-    const caretGlobal = before.length;
-    const endLocal = (caretGlobal <= pos.acc + pos.node.textContent.length)
-      ? caretGlobal - pos.acc
-      : pos.node.textContent.length;
-    return { node: pos.node, at: pos.localOffset, offset: endLocal, q };
-  };
-
-  const positionPanel = () => {
-    /* 锚定到编辑器上方（不追踪光标，避免键盘弹起后定位飘移） */
-    const vv = window.visualViewport || null;
-    const vh = vv ? vv.height : window.innerHeight;
-    const vw = vv ? vv.width : window.innerWidth;
-    const er = editor.getBoundingClientRect();
-    /* 面板浮在编辑器顶边之上，间距 6px */
-    let top = (vv ? vv.offsetTop : 0) + er.top - 6;
-    let left = (vv ? vv.offsetLeft : 0) + er.left;
-    /* 预估面板高度 */
-    const pH = Math.min(items.length, 8) * 52 + 14;
-    /* 如果编辑器太靠上、面板会超出顶部 → 改为编辑器下方弹出 */
-    if (top + pH < 4) {
-      top = (vv ? vv.offsetTop : 0) + er.bottom + 6;
-    }
-    panel.style.display = 'block';
-    const pw = panel.offsetWidth || 260;
-    left = Math.max(8, Math.min(left, vw - pw - 8));
-    top = Math.max(4, Math.min(top, vh - pH - 4));
-    panel.style.top = top + 'px';
-    panel.style.left = left + 'px';
-  };
-
-  const openPanel = () => {
-    const info = queryAt();
-    if (!info) { close(); return; }
-    const q = info.q.toLowerCase();
-    items = (source || [])
-      .filter(s => (s.title || '').toLowerCase().includes(q))
-      .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh-Hans-CN-u-kf-upper'))
-      .slice(0, 8);
-    active = 0; open = true; panel.style.display = 'block';
-    renderItems(); positionPanel();
-  };
-
-  const choose = (item) => {
-    const info = queryAt();
-    if (!info || !item) { close(); return; }
-    const tn = info.node;
-    const r = document.createRange();
-    r.setStart(tn, info.at); r.setEnd(tn, info.offset);
-    r.deleteContents();
-    const span = h('span', {
-      class: 'mention', contenteditable: 'false',
-      dataset: { type: item.type, id: item.id }
-    }, (item.type === 'book' ? '📖' : '🎬') + '《' + (item.title || '') + '》');
-    r.insertNode(span);
-    const space = document.createTextNode(' ');
-    span.parentNode.insertBefore(space, span.nextSibling);
-    const after = document.createRange();
-    after.setStart(space, 1); after.collapse(true);
-    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(after);
-    editor.focus();
-    close();
-  };
-
-  editor.addEventListener('input', openPanel);
-  editor.addEventListener('keyup', (e) => { if (e.key === ' ') close(); else openPanel(); });
-  editor.addEventListener('click', openPanel);
-  editor.addEventListener('blur', () => {
-    /* 延迟关闭，并排除 iOS 键盘动画期间的误触失焦；焦点回到编辑器或落在面板内则不关 */
-    setTimeout(() => {
-      const a = document.activeElement;
-      if (a === editor || panel.contains(a) || editor.contains(a)) return;
-      close();
-    }, 220);
-  });
-  editor.addEventListener('keydown', (e) => {
-    if (!open) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % Math.max(items.length, 1); renderItems(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + items.length) % Math.max(items.length, 1); renderItems(); }
-    else if (e.key === 'Enter') { if (items.length) { e.preventDefault(); choose(items[active]); } }
-    else if (e.key === 'Escape') { e.preventDefault(); close(); }
-  });
-
-  /* 移动端键盘弹出/收起时重新定位面板 */
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { if (open) positionPanel(); });
+    editor.addEventListener('keydown', (e) => {
+      if (!open) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % Math.max(items.length, 1); renderItems(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + items.length) % Math.max(items.length, 1); renderItems(); }
+      else if (e.key === 'Enter') { if (items.length) { e.preventDefault(); choose(items[active]); } }
+      else if (e.key === 'Escape') { e.preventDefault(); close(); }
+    });
+  } catch (err) {
+    console.warn('[attachMention] 初始化失败（不影响其他功能）:', err.message);
   }
 }
 
