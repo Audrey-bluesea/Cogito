@@ -105,23 +105,24 @@ function dayLabel(d) {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${weekdayCN(ymd(d))}`;
 }
 
-/* ═══ 时段色调：每条记录行按时间上柔和 tint（视觉区分时段） ═══ */
-const TIME_TINTS = {
-  /* 🌙 深夜呢喃 */  '0': '#EDEAF4', '1': '#EDEAF4', '2': '#EDEAF4',
-                       '3': '#ECE9F2', '4': '#ECE9F2', '5': '#ECE9F2',
-  /* 🌅 晨间思绪 */  '6': '#FBF3E8', '7': '#FAF1E6', '8': '#FAF0E5', '9': '#F9EFE3',
-  /* 🌤 上午时光 */  '10': '#F4F1EB', '11': '#F3F0EA',
-  /* 🍱 午间缝隙 */  '12': '#FCF6E6', '13': '#FBF5E5',
-  /* 🌿 午后漫游 */  '14': '#E8F3ED', '15': '#E7F2EC', '16': '#E6F1EB', '17': '#E5F0EA',
-  /* 🌆 入夜时分 */  '18': '#F9ECF0', '19': '#F8EBEF', '20': '#F7EAEE', '21': '#F6E9ED',
-  /* 🌌 深夜独处 */  '22': '#EAE7F3', '23': '#E9E6F2'
-};
+/* ═══ 时段氛围色（三维度：卡片背景 bg / 左侧色条 bar / 文字 text）═══ */
+const TIME_SLOTS = [
+  /* 🌙 深夜呢喃 */ { start: 0,  end: 6,  bg: '#D8D8E0', bar: '#B0B0C0', text: '#4A4A55' },
+  /* 🌅 晨间思绪 */ { start: 6,  end: 10, bg: '#F5E8F0', bar: '#D4C0D4', text: '#5A4A5A' },
+  /* 🌤 上午时光 */ { start: 10, end: 12, bg: '#FDF2E3', bar: '#C8D4B8', text: '#5A5A4A' },
+  /* 🍱 午间缝隙 */ { start: 12, end: 14, bg: '#E8F5F0', bar: '#A8C8C0', text: '#4A5A55' },
+  /* 🌿 午后漫游 */ { start: 14, end: 18, bg: '#F5EDE0', bar: '#D4C8B8', text: '#5A554A' },
+  /* 🌆 入夜时分 */ { start: 18, end: 22, bg: '#F5E0D8', bar: '#D4B8B8', text: '#5A4A4A' },
+  /* 🌌 深夜独处 */ { start: 22, end: 24, bg: '#E8E8F0', bar: '#B8B8D4', text: '#4A4A5A' }
+];
 
-function timeTint(iso) {
+/** 按时间戳返回所属时段的氛围色（无效时间返回 null） */
+function timeSlot(iso) {
   if (!iso || iso.length < 16) return null;
-  const hr = String(+iso.slice(11, 13)); // normalize '02'→'2'
-  if (+iso.slice(14, 16) === 0 && +hr === 0) return null; // legacy date-only
-  return TIME_TINTS[hr] || null;
+  const hr = +iso.slice(11, 13);
+  const min = +iso.slice(14, 16);
+  if (hr === 0 && min === 0) return null; // legacy date-only
+  return TIME_SLOTS.find(s => hr >= s.start && hr < s.end) || null;
 }
 
 /** 单条记录行（展开态） */
@@ -141,13 +142,13 @@ function dayRow(it, nav) {
   }
   inner.push(h('span', { class: 'mom-time' }, timeStr(it.ts)));
 
-  const tint = timeTint(it.ts);
+  const slot = timeSlot(it.ts);
 
   return h('div', {
     class: 'mom-card',
     style: {
-      borderLeftColor: MOD_BAR[it.store] || 'var(--border)',
-      ...(tint ? { background: tint } : {})
+      borderLeftColor: slot ? slot.bar : (MOD_BAR[it.store] || 'var(--border)'),
+      ...(slot ? { background: slot.bg, color: slot.text } : {})
     },
     onclick: () => nav(`#/${it.store}/d/${it.rec.id}`)
   }, h('div', { class: 'mom-card-inner' }, ...inner));

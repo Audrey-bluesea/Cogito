@@ -1308,10 +1308,10 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 }
 .mom-ico { font-size: .9rem; flex: 0 0 auto; }
 .mom-summary {
-  flex: 1; min-width: 0; font-size: .88rem; color: var(--text);
+  flex: 1; min-width: 0; font-size: .88rem; color: inherit;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.mom-time { flex: 0 0 auto; font-size: .72rem; color: var(--muted); }
+.mom-time { flex: 0 0 auto; font-size: .72rem; color: inherit; opacity: .72; }
 .mom-rating {
   flex: 0 0 auto; font-size: .72rem; font-weight: 600; color: var(--accent-d);
   white-space: nowrap;
