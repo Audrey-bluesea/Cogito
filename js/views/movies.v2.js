@@ -1,7 +1,7 @@
 /* ═══════════ 模块 4：影视收藏 Movies ═══════════ */
 import { db, getCustomOptions } from '../db.v2.js';
 import {
-  h, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select, selectCustom,
+  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select, selectCustom,
   multiSelectCustom,
   starRating, starsStatic, imagePicker, swipeRow, confirmSheet, toast, todayISO, nowLocalDT, fmtDate, fmtMonth,
   findMentions, stripBody, truncate
@@ -56,7 +56,7 @@ export async function list(nav) {
 
   let content;
   if (!shown.length) {
-    content = emptyState('🎬', rows.length ? '没有符合条件的影片' : '片单还是空的', '点击右上角 ＋ 记录一部看过的片子');
+    content = emptyState('movie', rows.length ? '没有符合条件的影片' : '片单还是空的', '点击右上角 ＋ 记录一部看过的片子');
   } else {
     const groups = STATUS_ORDER.filter(s => shown.some(r => r.status === s));
     content = h('div', {}, ...groups.map(g => {
@@ -74,7 +74,7 @@ export async function list(nav) {
     title: '影视', sub: 'Moives', toolbar,
     actions: [
       h('button', { class: 'icon-btn plus', onclick: () => nav('#/movies/new'), 'aria-label': '添加影视' }, '＋'),
-      h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, '🔍')
+      h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, icon('search'))
     ],
     content
   });
@@ -83,7 +83,7 @@ export async function list(nav) {
 function posterEl(r) {
   return r.poster
     ? h('img', { class: 'cover', src: r.poster, alt: r.title })
-    : h('div', { class: 'cover cover-ph' }, '🎬');
+    : h('div', { class: 'cover cover-ph' }, icon('movie'));
 }
 
 function gridCard(r, nav) {
@@ -140,7 +140,7 @@ function listCard(r, nav) {
 /* ---------- 只读详情页 ---------- */
 export async function detail(id, nav, query) {
   const r = await db.get(STORE, id);
-  if (!r) return emptyState('🎬', '影片不见了', '它可能已经被删除');
+  if (!r) return emptyState('movie', '影片不见了', '它可能已经被删除');
   const from = (query && query.get) ? (query.get('from') || '') : '';
   const back = () => nav(from || '#/movies', true);
   const sub = [r.director, r.region].filter(Boolean).join(' · ');
@@ -170,7 +170,7 @@ export async function detail(id, nav, query) {
   const backlinks = await findMentions('movie', r.id);
   if (backlinks.length) {
     content.appendChild(h('div', { class: 'd-section' },
-      h('div', { class: 'd-label' }, `📎 提及此作品的日记与备忘（${backlinks.length}）`),
+      h('div', { class: 'd-label' }, [icon('paperclip'), ' 提及此作品的日记与备忘（' + backlinks.length + '）']),
       h('div', { class: 'backlinks' }, ...backlinks.map(({ store, rec }) => {
         const body = stripBody(rec.content);
         const label = store === 'journals'
@@ -184,7 +184,7 @@ export async function detail(id, nav, query) {
   return detailShell({
     title: '影视', onBack: back,
     actions: [
-      h('button', { class: 'icon-btn', onclick: () => nav('#/movies/' + id), 'aria-label': '编辑' }, '✏️')
+      h('button', { class: 'icon-btn', onclick: () => nav('#/movies/' + id), 'aria-label': '编辑' }, icon('pencil'))
     ],
     content: h('div', { class: 'detail-card' }, content)
   });
@@ -227,7 +227,7 @@ export async function edit(id, nav) {
   status.addEventListener('change', syncProgress); syncProgress();
 
   const rating = starRating(rec?.rating || 0);
-  const poster = imagePicker(rec?.poster || '', '🎬');
+  const poster = imagePicker(rec?.poster || '', 'movie');
   const review = textarea({ value: rec?.review || '', maxlength: 300, small: true });
   const excerpt = textarea({ value: rec?.excerpt || '', maxlength: 500, small: true });
 
@@ -282,7 +282,7 @@ export async function edit(id, nav) {
             await db.remove(STORE, rec.id); toast('已删除'); nav('#/movies', true);
           }
         }
-      }, '🗑')
+      }, icon('delete'))
     );
   }
   return page;

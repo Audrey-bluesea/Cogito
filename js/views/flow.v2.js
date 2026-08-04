@@ -1,6 +1,6 @@
 /* ═══════════ 首页：🌳 时光流 Flow（日签卡片 · 最近 7 天） ═══════════ */
 import { db } from '../db.v2.js';
-import { h, stripBody, truncate, weekdayCN } from '../ui.v2.js';
+import { h, icon, stripBody, truncate, weekdayCN } from '../ui.v2.js';
 
 const MOD_ICO = { journals: '📖', memos: '📕', books: '📚', movies: '🎬' };
 const MOD_BAR = { journals: '#DBC4B0', memos: '#EDE0C8', books: '#C6D0C0', movies: '#88B5C6' };
@@ -471,7 +471,7 @@ export async function list(nav) {
         h('div', { class: 'flow-hi' }, g.hi),
         h('div', { class: 'flow-sub' }, g.sub)
       ),
-      h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, '🔍'),
+      h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, icon('search')),
       h('button', { class: 'icon-btn', onclick: () => nav('#/settings'), 'aria-label': '设置' }, '⚙️')
     ),
     h('div', { class: 'scroll' },

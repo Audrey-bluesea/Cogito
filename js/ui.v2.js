@@ -335,13 +335,14 @@ export function compressImage(file, maxW = 720, quality = 0.82) {
 }
 
 /** 封面/海报上传控件；返回 { el, get() } */
-export function imagePicker(initial = '', placeholderEmoji = '📖') {
+export function imagePicker(initial = '', placeholderEmoji = 'bookmark') {
   let data = initial || '';
   const preview = h('div', { class: 'up-preview' });
   const paint = () => {
     preview.innerHTML = '';
     if (data) preview.appendChild(h('img', { src: data, alt: '' }));
-    else preview.appendChild(h('span', {}, placeholderEmoji));
+    else preview.appendChild(h('span', { class: 'up-ph' },
+      document.getElementById('icon-' + placeholderEmoji) ? icon(placeholderEmoji) : document.createTextNode(placeholderEmoji)));
   };
   const input = h('input', {
     type: 'file', accept: 'image/*', style: { display: 'none' },
@@ -454,7 +455,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
         fileInput.value = '';
       }
     });
-    bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, '🖼 插入图片'));
+    bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, [icon('image'), ' 插入图片']));
     bar.appendChild(fileInput);
   }
   const wrap = h('div', { class: 'rte-wrap' }, bar, editor);
@@ -492,7 +493,7 @@ function attachMention(editor, source) {
         class: 'mention-item' + (i === active ? ' on' : ''),
         onmousedown: (e) => { e.preventDefault(); choose(it); }
       },
-        h('span', { class: 'mention-ico' }, it.type === 'book' ? '📖' : '🎬'),
+        h('span', { class: 'mention-ico' }, icon(it.type === 'book' ? 'bookmark' : 'movie')),
         h('span', { class: 'mention-label' }, it.title || '(无标题)')
       );
       panel.appendChild(row);
@@ -804,8 +805,8 @@ export function manageOptions(key, presets, opts = {}) {
     list.forEach(name => {
       const row = h('div', { style: { display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.6rem 0', borderBottom: '1px solid var(--border)' } },
         h('span', { style: { flex: '1', fontSize: '.95rem', color: 'var(--text)' } }, name),
-        h('button', { class: 'icon-btn', onclick: () => startRename(row, name) }, '✎'),
-        h('button', { class: 'icon-btn', onclick: () => doDelete(name) }, '🗑')
+        h('button', { class: 'icon-btn', onclick: () => startRename(row, name) }, icon('pencil')),
+        h('button', { class: 'icon-btn', onclick: () => doDelete(name) }, icon('delete'))
       );
       body.appendChild(row);
     });
@@ -870,9 +871,20 @@ export function editorShell({ title, onBack, form, onSave, saveText = '保存' }
   );
 }
 
-export function emptyState(emoji, title, desc) {
+/** 手绘图标：返回引用 #icon-<name> 的 <svg> 节点（Doodle Icons，fill=currentColor 随主题变色） */
+export function icon(name, cls = '') {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = `<svg class="doodle-icon${cls ? ' ' + cls : ''}" aria-hidden="true" focusable="false"><use href="#icon-${name}"></use></svg>`;
+  return tmp.firstElementChild;
+}
+
+export function emptyState(iconArg, title, desc) {
+  let emo;
+  if (typeof iconArg === 'string' && document.getElementById('icon-' + iconArg)) emo = icon(iconArg);
+  else if (typeof iconArg === 'string') emo = document.createTextNode(iconArg);
+  else emo = iconArg;
   return h('div', { class: 'empty' },
-    h('span', { class: 'emo' }, emoji),
+    h('span', { class: 'emo' }, emo),
     h('p', { style: { fontWeight: '600', color: 'var(--text)' } }, title),
     h('p', {}, desc)
   );
@@ -885,7 +897,7 @@ export function globalSearchRow(q, nav) {
     class: 'go-global',
     onclick: () => nav('#/search?q=' + encodeURIComponent(kw))
   },
-    h('span', { class: 'gg-ico' }, '🌐'),
+    h('span', { class: 'gg-ico' }, icon('globe')),
     h('span', { class: 'gg-text' }, `在全部内容中搜索「${truncate(kw, 12)}」`),
     h('span', { class: 'gg-arrow' }, '›')
   );

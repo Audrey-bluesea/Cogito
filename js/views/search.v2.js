@@ -1,6 +1,6 @@
 /* ═══════════ 全局搜索 🔍 —— 跨日记 / 备忘 / 藏书 / 影库 ═══════════ */
 import { db } from '../db.v2.js';
-import { h, emptyState, stripBody, fmtDate } from '../ui.v2.js';
+import { h, icon, emptyState, stripBody, fmtDate } from '../ui.v2.js';
 
 const MOD = {
   journals: { ico: '📖', name: '日记', bar: '#DBC4B0' },
@@ -139,7 +139,7 @@ export async function list(nav, query) {
   const clearBtn = h('button', {
     class: 'x', 'aria-label': '清空',
     onclick: () => { input.value = ''; curQ = ''; syncUrl(); paint(); input.focus(); }
-  }, '✕');
+  }, icon('close'));
 
   const chipsWrap = h('div', { class: 'sr-chips' });
   const resWrap = h('div', { class: 'sr-results' });

@@ -1,7 +1,7 @@
 /* ═══════════ 模块 1：日记 Journal ═══════════ */
 import { db } from '../db.v2.js';
 import {
-  h, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select,
+  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select,
   emojiPicker, imagePicker, swipeRow, confirmSheet, toast, todayISO, weekdayCN, dayOf, monOf, fmtDate,
   richBody, mentionSource, stripBody, renderBody, truncate, globalSearchRow, nowLocalDT
 } from '../ui.v2.js';
@@ -47,7 +47,7 @@ export async function list(nav, query) {
     const searchBar = h('div', { class: 'search-sticky', style: { display: 'none' } },
       h('div', { class: 'search' },
         searchInput,
-        h('button', { class: 'x', onclick: () => { searchInput.value = ''; renderList(''); toggleSearch(false); updateUrlQ(''); } }, '✕')
+        h('button', { class: 'x', onclick: () => { searchInput.value = ''; renderList(''); toggleSearch(false); updateUrlQ(''); } }, icon('close'))
       )
     );
     const listWrap = h('div', {});
@@ -60,7 +60,7 @@ export async function list(nav, query) {
       const hash = clean ? '#/journals?q=' + encodeURIComponent(clean) : '#/journals';
       history.replaceState(null, '', hash);
     };
-    searchBtn = h('button', { class: 'icon-btn', onclick: () => { const on = searchBar.style.display === 'none'; toggleSearch(on); }, 'aria-label': '搜索' }, '🔍');
+    searchBtn = h('button', { class: 'icon-btn', onclick: () => { const on = searchBar.style.display === 'none'; toggleSearch(on); }, 'aria-label': '搜索' }, icon('search'));
     const renderList = (q) => {
       const kw = (q || '').trim().toLowerCase();
       const rawQ = (q || '').trim();
@@ -74,7 +74,7 @@ export async function list(nav, query) {
       if (!filtered.length) {
         const searching = !!kw;
         listWrap.appendChild(emptyState(
-          searching ? '🔍' : '🌙',
+          searching ? 'search' : '🌙',
           searching ? '日记里没有匹配的结果' : '还没有日记',
           searching ? '试试上面的全局搜索，或换个关键词' : '点击右上角 ＋ 写下今天的心情吧'
         ));
@@ -306,7 +306,7 @@ export async function detail(id, nav, query) {
   return detailShell({
     title: '日记', onBack: back,
     actions: [
-      h('button', { class: 'icon-btn', onclick: () => nav('#/journals/' + id), 'aria-label': '编辑' }, '✏️')
+      h('button', { class: 'icon-btn', onclick: () => nav('#/journals/' + id), 'aria-label': '编辑' }, icon('pencil'))
     ],
     content
   });
@@ -343,7 +343,7 @@ export async function edit(id, nav, query) {
   const tempMaxIn = input({ type: 'number', inputmode: 'decimal', class: 'input temp-input', value: rec?.tempMax ?? '' });
   const mood = emojiPicker(MOODS, rec?.mood || '😊');
   const kwIn = input({ placeholder: '', value: (rec?.keywords || []).join('，') });
-  const illus = imagePicker(rec?.illustration || '', '🖼');
+  const illus = imagePicker(rec?.illustration || '', 'image');
   const breakIn = input({ placeholder: '早餐', value: rec?.breakfast || '' });
   const lunchIn = input({ placeholder: '午餐', value: rec?.lunch || '' });
   const dinnerIn = input({ placeholder: '晚餐', value: rec?.dinner || '' });

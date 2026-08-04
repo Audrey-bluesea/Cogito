@@ -1,7 +1,7 @@
 /* ═══════════ 模块 3：书籍收藏 Books ═══════════ */
 import { db, getCustomOptions } from '../db.v2.js';
 import {
-  h, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select, selectCustom,
+  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select, selectCustom,
   multiSelectCustom,
   radioGroup, starRating, starsStatic, imagePicker, swipeRow, confirmSheet, toast, todayISO, fmtDate,
   findMentions, stripBody, truncate
@@ -48,7 +48,7 @@ export async function list(nav) {
 
   let content;
   if (!shown.length) {
-    content = emptyState('📚', rows.length ? '没有符合条件的书' : '书架还是空的', '点击右上角 ＋ 添加一本书');
+    content = emptyState('bookmark', rows.length ? '没有符合条件的书' : '书架还是空的', '点击右上角 ＋ 添加一本书');
   } else {
     const groups = STATUS_ORDER.filter(s => shown.some(r => r.status === s));
     content = h('div', {}, ...groups.map(g => {
@@ -67,7 +67,7 @@ export async function list(nav) {
     actions: [
       h('button', { class: 'chip rc-entry', onclick: () => nav('#/books/checkin') }, '✅ 阅读打卡'),
       h('button', { class: 'icon-btn plus', onclick: () => nav('#/books/new'), 'aria-label': '添加书籍' }, '＋'),
-      h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, '🔍')
+      h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, icon('search'))
     ],
     content
   });
@@ -76,7 +76,7 @@ export async function list(nav) {
 function coverEl(r, cls = 'cover') {
   return r.cover
     ? h('img', { class: cls, src: r.cover, alt: r.title })
-    : h('div', { class: cls + ' cover-ph' }, '📖');
+    : h('div', { class: cls + ' cover-ph' }, icon('bookmark'));
 }
 
 /* 阅读进度：细线进度条 + 小字页数。仅「在读」且填了当前页时显示 */
@@ -148,7 +148,7 @@ function listCard(r, nav) {
 /* ---------- 只读详情页 ---------- */
 export async function detail(id, nav, query) {
   const r = await db.get(STORE, id);
-  if (!r) return emptyState('📚', '书不见了', '它可能已经被删除');
+  if (!r) return emptyState('bookmark', '书不见了', '它可能已经被删除');
   const from = (query && query.get) ? (query.get('from') || '') : '';
   const back = () => nav(from || '#/books', true);
   const content = h('div', {},
@@ -175,7 +175,7 @@ export async function detail(id, nav, query) {
   const backlinks = await findMentions('book', r.id);
   if (backlinks.length) {
     content.appendChild(h('div', { class: 'd-section' },
-      h('div', { class: 'd-label' }, `📎 提及此作品的日记与备忘（${backlinks.length}）`),
+      h('div', { class: 'd-label' }, [icon('paperclip'), ' 提及此作品的日记与备忘（' + backlinks.length + '）']),
       h('div', { class: 'backlinks' }, ...backlinks.map(({ store, rec }) => {
         const body = stripBody(rec.content);
         const label = store === 'journals'
@@ -189,7 +189,7 @@ export async function detail(id, nav, query) {
   return detailShell({
     title: '书籍', onBack: back,
     actions: [
-      h('button', { class: 'icon-btn', onclick: () => nav('#/books/' + id), 'aria-label': '编辑' }, '✏️')
+      h('button', { class: 'icon-btn', onclick: () => nav('#/books/' + id), 'aria-label': '编辑' }, icon('pencil'))
     ],
     content: h('div', { class: 'detail-card' }, content)
   });
@@ -227,7 +227,7 @@ export async function edit(id, nav) {
   };
   status.addEventListener('change', () => { syncFinish(); syncProgress(); }); syncFinish(); syncProgress();
 
-  const cover = imagePicker(rec?.cover || '', '📖');
+  const cover = imagePicker(rec?.cover || '', 'bookmark');
   const method = radioGroup(METHODS, rec?.method || METHODS[0]);
   const rating = starRating(rec?.rating || 0);
   const reason = textarea({ value: rec?.reason || '', maxlength: 200, small: true });
@@ -282,7 +282,7 @@ export async function edit(id, nav) {
             await db.remove(STORE, rec.id); toast('已删除'); nav('#/books', true);
           }
         }
-      }, '🗑')
+      }, icon('delete'))
     );
   }
   return page;

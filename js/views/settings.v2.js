@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════════ */
 
 import { db } from '../db.v2.js';
-import { h, pageShell, toast, confirmSheet } from '../ui.v2.js';
+import { h, icon, pageShell, toast, confirmSheet } from '../ui.v2.js';
 import { THEMES, applyTheme, getTheme } from '../theme.v2.js';
 
 export async function list(nav) {
@@ -86,7 +86,7 @@ export async function list(nav) {
       const sw = h('div', { class: 'theme-sw' },
         ...t.sw.map(c => h('i', { style: { background: c } }))
       );
-      const check = h('span', { class: 'theme-check' }, '✓');
+      const check = h('span', { class: 'theme-check' }, icon('check'));
       const opt = h('div', {
         class: 'theme-opt' + (t.id === getTheme() ? ' on' : ''),
         onclick: () => {

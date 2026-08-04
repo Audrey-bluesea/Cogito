@@ -1,7 +1,7 @@
 /* ═══════════ 模块 2：备忘录 Memo ═══════════ */
 import { db, getCustomOptions } from '../db.v2.js';
 import {
-  h, pageShell, editorShell, detailShell, emptyState, field, input, select, selectCustom,
+  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, select, selectCustom,
   swipeRow, confirmSheet, toast, nowLocalDT, fmtDateTime, richBody, mentionSource, renderBody,
   globalSearchRow
 } from '../ui.v2.js';
@@ -35,7 +35,7 @@ export async function list(nav, query) {
   const searchBar = h('div', { class: 'search-sticky', style: { display: 'none' } },
     h('div', { class: 'search' },
       searchInput,
-      h('button', { class: 'x', onclick: () => { searchInput.value = ''; renderList(''); toggleSearch(false); updateUrlQ(''); } }, '✕')
+      h('button', { class: 'x', onclick: () => { searchInput.value = ''; renderList(''); toggleSearch(false); updateUrlQ(''); } }, icon('close'))
     )
   );
   const listWrap = h('div', {});
@@ -49,7 +49,7 @@ export async function list(nav, query) {
     history.replaceState(null, '', hash);
   };
   const initQ = (query && query.get) ? (query.get('q') || '') : '';
-  searchBtn = h('button', { class: 'icon-btn', onclick: () => { const on = searchBar.style.display === 'none'; toggleSearch(on); }, 'aria-label': '搜索' }, '🔍');
+  searchBtn = h('button', { class: 'icon-btn', onclick: () => { const on = searchBar.style.display === 'none'; toggleSearch(on); }, 'aria-label': '搜索' }, icon('search'));
   const renderList = (q) => {
     const kw = (q || '').trim().toLowerCase();
     const rawQ = (q || '').trim();
@@ -64,7 +64,7 @@ export async function list(nav, query) {
       const searching = !!kw;
       const emptyTitle = (!kw && filterCat !== '全部') ? `「${filterCat}」还是空的` : '还没有备忘';
       listWrap.appendChild(emptyState(
-        searching ? '🔍' : '🍃',
+        searching ? 'search' : 'tree',
         searching ? '备忘里没有匹配的结果' : emptyTitle,
         searching ? '试试上面的全局搜索，或换个关键词' : '点击右上角 ＋ 记一笔'
       ));
@@ -140,7 +140,7 @@ function card(r, nav, q) {
 /* ---------- 只读详情页 ---------- */
 export async function detail(id, nav, query) {
   const r = await db.get(STORE, id);
-  if (!r) return emptyState('🍃', '备忘不见了', '它可能已经被删除');
+  if (!r) return emptyState('tree', '备忘不见了', '它可能已经被删除');
   const q = (query && query.get) ? (query.get('q') || '') : '';
   const from = (query && query.get) ? (query.get('from') || '') : '';
   const back = () => nav(from || (q ? '#/memos?q=' + encodeURIComponent(q) : '#/memos'), true);
@@ -159,7 +159,7 @@ export async function detail(id, nav, query) {
   return detailShell({
     title: '备忘录', onBack: back,
     actions: [
-      h('button', { class: 'icon-btn', onclick: () => nav('#/memos/' + id), 'aria-label': '编辑' }, '✏️')
+      h('button', { class: 'icon-btn', onclick: () => nav('#/memos/' + id), 'aria-label': '编辑' }, icon('pencil'))
     ],
     content
   });
