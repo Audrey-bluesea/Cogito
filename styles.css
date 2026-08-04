@@ -705,12 +705,12 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .fc-box {
   width: 1.95rem; height: 1.95rem; flex: 0 0 auto;
   border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  border: 2px dashed color-mix(in srgb, var(--text) 24%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--text) 24%, transparent);
   background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: transform .12s ease, background .15s ease, border-color .15s ease;
 }
 .fc-box::after { content: ''; }
-.fc-box.checked { background: var(--accent); border: 2px solid var(--accent); }
+.fc-box.checked { background: var(--accent); border: 1px solid var(--accent); }
 .fc-box.checked::after { content: '✓'; color: #fff; font-size: .95rem; font-weight: 700; line-height: 1; }
 .fc-box:active { transform: scale(.92); }
 .rc-tip { text-align: center; font-size: .62rem; color: var(--muted); margin: .8rem auto 1.5rem; }
