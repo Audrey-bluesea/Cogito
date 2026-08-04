@@ -625,26 +625,26 @@ body.editing .tabbar { transform: translateY(110%); opacity: 0; pointer-events: 
   opacity: .55;
   pointer-events: none;
 }
-/* 详情页：整张纸都有手撕边（顶/底/左/右，幅度 ~0.6%，呼应列表卡但四边一致） */
+/* 详情页：四边不规则手撕边（固定像素振幅；180px 长周期 + 尖锐锯齿，消除"波浪/洗衣板"节奏感） */
 .detail-card {
-  /* 手撕边缘：固定像素振幅（不受卡片高度影响），四边均自然微裂 */
-  --tear: 6px;
-  --m-top:    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='6'%3E%3Cpath d='M0,2.5 Q5.5,0 11,2.5 T22,2.5 V6 H0 Z' fill='%23000'/%3E%3C/svg%3E");
-  --m-bottom: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='6'%3E%3Cpath d='M0,0 H22 V2.5 Q16.5,5 11,2.5 T0,2.5 Z' fill='%23000'/%3E%3C/svg%3E");
-  --m-left:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='22'%3E%3Cpath d='M2.5,0 Q0,5.5 2.5,11 T2.5,22 H6 V0 Z' fill='%23000'/%3E%3C/svg%3E");
-  --m-right:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='22'%3E%3Cpath d='M0,0 H2.5 Q0,5.5 2.5,11 T2.5,22 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+  /* 手撕边缘：固定像素振幅（不受卡片高度影响），四边均为不规则撕裂，长内容也不会被放大 */
+  --tear: 4px;
+  --m-top:    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='4'%3E%3Cpath d='M0,1.5 L9,0.6 L17,2 L25,1 L34,2.4 L42,0.8 L51,1.8 L60,0.5 L69,2.2 L78,1.2 L87,0.7 L96,2 L105,1 L114,2.3 L123,0.6 L132,1.6 L141,0.9 L150,2.1 L159,1 L168,0.7 L177,1.9 L180,1.5 V4 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+  --m-bottom: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='4'%3E%3Cpath d='M0,1.5 L9,2.4 L17,0.8 L25,2 L34,0.6 L42,2.2 L51,0.9 L60,2.5 L69,0.8 L78,1.8 L87,2.3 L96,1 L105,2 L114,0.7 L123,2.4 L132,1.4 L141,2.1 L150,0.9 L159,2 L168,2.3 L177,1.1 L180,1.5 V0 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+  --m-left:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='180'%3E%3Cpath d='M1.5,0 L0.6,9 L2,17 L1,25 L2.4,34 L0.8,42 L1.8,51 L0.5,60 L2.2,69 L1.2,78 L0.7,87 L2,96 L1,105 L2.3,114 L0.6,123 L1.6,132 L0.9,141 L2.1,150 L1,159 L0.7,168 L1.9,177 L1.5,180 H4 V0 Z' fill='%23000'/%3E%3C/svg%3E");
+  --m-right:  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='180'%3E%3Cpath d='M1.5,0 L2.4,9 L0.8,17 L2,25 L0.6,34 L2.2,42 L0.9,51 L2.5,60 L0.8,69 L1.8,78 L2.3,87 L1,96 L2,105 L0.7,114 L2.4,123 L1.4,132 L2.1,141 L0.9,150 L2,159 L2.3,168 L1.1,177 L1.5,180 H0 V0 Z' fill='%23000'/%3E%3C/svg%3E");
   -webkit-mask:
     linear-gradient(#000 0 0) center / calc(100% - 2 * var(--tear)) calc(100% - 2 * var(--tear)) no-repeat,
-    var(--m-top)    top    / 22px var(--tear) repeat-x,
-    var(--m-bottom) bottom / 22px var(--tear) repeat-x,
-    var(--m-left)   left   / var(--tear) 22px repeat-y,
-    var(--m-right)  right  / var(--tear) 22px repeat-y;
+    var(--m-top)    top    / 180px var(--tear) repeat-x,
+    var(--m-bottom) bottom / 180px var(--tear) repeat-x,
+    var(--m-left)   left   / var(--tear) 180px repeat-y,
+    var(--m-right)  right  / var(--tear) 180px repeat-y;
   mask:
     linear-gradient(#000 0 0) center / calc(100% - 2 * var(--tear)) calc(100% - 2 * var(--tear)) no-repeat,
-    var(--m-top)    top    / 22px var(--tear) repeat-x,
-    var(--m-bottom) bottom / 22px var(--tear) repeat-x,
-    var(--m-left)   left   / var(--tear) 22px repeat-y,
-    var(--m-right)  right  / var(--tear) 22px repeat-y;
+    var(--m-top)    top    / 180px var(--tear) repeat-x,
+    var(--m-bottom) bottom / 180px var(--tear) repeat-x,
+    var(--m-left)   left   / var(--tear) 180px repeat-y,
+    var(--m-right)  right  / var(--tear) 180px repeat-y;
   filter: drop-shadow(0 3px 7px rgba(180,160,120,.4));
   background: var(--card);
   padding: 1.05rem 1.05rem 1.35rem;
