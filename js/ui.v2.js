@@ -342,7 +342,7 @@ export function imagePicker(initial = '', placeholderEmoji = 'bookmark') {
     preview.innerHTML = '';
     if (data) preview.appendChild(h('img', { src: data, alt: '' }));
     else preview.appendChild(h('span', { class: 'up-ph' },
-      document.getElementById('icon-' + placeholderEmoji) ? icon(placeholderEmoji) : document.createTextNode(placeholderEmoji)));
+      document.getElementById('tw-' + placeholderEmoji) ? icon(placeholderEmoji) : document.createTextNode(placeholderEmoji)));
   };
   const input = h('input', {
     type: 'file', accept: 'image/*', style: { display: 'none' },
@@ -871,16 +871,16 @@ export function editorShell({ title, onBack, form, onSave, saveText = '保存' }
   );
 }
 
-/** 手绘图标：返回引用 #icon-<name> 的 <svg> 节点（Doodle Icons，fill=currentColor 随主题变色） */
+/** 彩色图标：返回引用 #tw-<name> 的 <svg> 节点（Twemoji CC-BY 4.0，保留原始 fill 色） */
 export function icon(name, cls = '') {
   const tmp = document.createElement('div');
-  tmp.innerHTML = `<svg class="doodle-icon${cls ? ' ' + cls : ''}" aria-hidden="true" focusable="false"><use href="#icon-${name}"></use></svg>`;
+  tmp.innerHTML = `<svg class="tw-icon${cls ? ' ' + cls : ''}" aria-hidden="true" focusable="false"><use href="#tw-${name}"></use></svg>`;
   return tmp.firstElementChild;
 }
 
 export function emptyState(iconArg, title, desc) {
   let emo;
-  if (typeof iconArg === 'string' && document.getElementById('icon-' + iconArg)) emo = icon(iconArg);
+  if (typeof iconArg === 'string' && document.getElementById('tw-' + iconArg)) emo = icon(iconArg);
   else if (typeof iconArg === 'string') emo = document.createTextNode(iconArg);
   else emo = iconArg;
   return h('div', { class: 'empty' },

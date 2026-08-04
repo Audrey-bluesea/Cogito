@@ -1427,17 +1427,16 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .gg-arrow { flex: 0 0 auto; color: var(--muted); font-size: 1rem; }
 
 /* ═══════════════════════════════════════════════════════════
-   v64：手绘图标（Doodle Icons）—— fill:currentColor 随主题变色
+   v66：彩色图标（Twemoji CC-BY 4.0）—— 保留原始 fill 色，不使用 currentColor
    ═══════════════════════════════════════════════════════════ */
-.doodle-icon { width: 1em; height: 1em; display: inline-block; vertical-align: -.14em; flex: 0 0 auto; fill: currentColor; overflow: visible; }
-.doodle-icon use { pointer-events: none; }
-.tab-ico.doodle-icon { vertical-align: -.18em; }
-.empty .emo .doodle-icon { width: 3rem; height: 3rem; vertical-align: 0; opacity: .85; }
-.cover-ph .doodle-icon { width: 2.4rem; height: 2.4rem; opacity: .92; }
+.tw-icon { width: 1em; height: 1em; display: inline-block; vertical-align: -.14em; flex: 0 0 auto; overflow: visible; }
+.tw-icon use { pointer-events: none; }
+.empty .emo .tw-icon { width: 3rem; height: 3rem; vertical-align: 0; opacity: .85; }
+.cover-ph .tw-icon { width: 2.4rem; height: 2.4rem; opacity: .92; }
 .up-ph { display: grid; place-items: center; width: 100%; height: 100%; }
-.up-ph .doodle-icon { width: 2.6rem; height: 2.6rem; opacity: .5; }
-.mention-ico .doodle-icon, .gg-ico .doodle-icon, .theme-check .doodle-icon { vertical-align: -.12em; }
-.d-label .doodle-icon { width: 1em; height: 1em; vertical-align: -.12em; margin-right: .15rem; }
+.up-ph .tw-icon { width: 2.6rem; height: 2.6rem; opacity: .5; }
+.mention-ico .tw-icon, .gg-ico .tw-icon, .theme-check .tw-icon { vertical-align: -.12em; }
+.d-label .tw-icon { width: 1em; height: 1em; vertical-align: -.12em; margin-right: .15rem; }
 
 /* ═══════════════════════════════════════════════════════════
    v53：取消 v52 的全局单色古董纸覆盖，恢复各主题自带彩色底

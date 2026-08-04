@@ -142,8 +142,7 @@ export async function list(nav) {
       h('h3', { class: 'card-title', style: { marginBottom: '.45rem' } }, '关于与鸣谢'),
       h('p', { class: 'card-sub', style: { lineHeight: 1.55 } },
         'Cogito · 我思故我在 — 个人生活记录中心。' +
-        '底部导航图标采用 Twemoji（CC-BY 4.0，twitter/twemoji）；' +
-        '页面手绘图标采用 Doodle Icons（CC0）。')
+        '图标采用 Twemoji（CC-BY 4.0，twitter/twemoji）。')
     )
   );
 
