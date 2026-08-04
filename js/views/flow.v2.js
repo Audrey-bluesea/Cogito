@@ -492,6 +492,7 @@ export async function list(nav) {
         h('div', { class: 'flow-hi' }, g.hi),
         h('div', { class: 'flow-sub' }, g.sub)
       ),
+      todayCheckinBox(checkins),
       h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, icon('search')),
       h('button', { class: 'icon-btn', onclick: () => nav('#/settings'), 'aria-label': '设置' }, '⚙️')
     ),
@@ -499,7 +500,6 @@ export async function list(nav) {
       h('div', { class: 'flow' },
         weightCard(memos, nav),
         randomEcho(journals, books, movies, nav),
-        todayCheckinBox(checkins),
         weekReview(journals, memos, books, movies, checkins),
         timeEcho(journals, books, movies),
         allBlank
