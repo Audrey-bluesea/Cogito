@@ -465,6 +465,8 @@ export function richBody(initial = '', { withImage = true, mention = null, place
  * @param source   [{ type:'book'|'movie', id, title }, ...]
  */
 function attachMention(editor, source) {
+  /* 每次进入编辑器都清理上一轮的面板，避免反复进入后 DOM 堆积 */
+  document.querySelectorAll('.mention-panel').forEach(p => p.remove());
   /* 面板挂到 body，不受父容器限制 */
   const panel = h('div', { class: 'mention-panel' });
   document.body.appendChild(panel);
@@ -487,12 +489,17 @@ function attachMention(editor, source) {
     });
   };
 
-  const caretRect = () => {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return null;
-    const r = sel.getRangeAt(0).cloneRange(); r.collapse(true);
-    const rect = r.getBoundingClientRect();
-    return (rect && (rect.left || rect.top)) ? rect : null;
+  /* 在 root 内按「全局文本偏移」定位到具体文本节点及其节点内偏移
+     （兼容 iOS 把光标放在元素节点、而非文本节点的情况）*/
+  const locate = (root, globalOffset) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let acc = 0, n;
+    while ((n = walker.nextNode())) {
+      const len = n.textContent.length;
+      if (acc + len >= globalOffset) return { node: n, acc, localOffset: globalOffset - acc };
+      acc += len;
+    }
+    return null;
   };
 
   const queryAt = () => {
@@ -500,14 +507,22 @@ function attachMention(editor, source) {
     if (!sel.rangeCount) return null;
     const range = sel.getRangeAt(0);
     if (!range.collapsed) return null;
-    const node = range.startContainer;
-    if (node.nodeType !== 3) return null;            // 仅支持文本节点（含 @ 的段落）
-    const text = node.textContent.slice(0, range.startOffset);
-    const at = text.lastIndexOf('@');
-    if (at === -1) return null;
-    const q = text.slice(at + 1);
+    /* 取「编辑器开头 → 光标」的全部文本，不依赖 startContainer 是否为文本节点 */
+    const pre = range.cloneRange();
+    try { pre.selectNodeContents(editor); pre.setEnd(range.startContainer, range.startOffset); }
+    catch { return null; }
+    const before = pre.toString();
+    const atGlobal = before.lastIndexOf('@');
+    if (atGlobal === -1) return null;
+    const q = before.slice(atGlobal + 1);
     if (/\s/.test(q)) return null;                    // 空格意味着关联已结束
-    return { at, q, node, offset: range.startOffset };
+    const pos = locate(editor, atGlobal);
+    if (!pos) return null;
+    const caretGlobal = before.length;
+    const endLocal = (caretGlobal <= pos.acc + pos.node.textContent.length)
+      ? caretGlobal - pos.acc
+      : pos.node.textContent.length;
+    return { node: pos.node, at: pos.localOffset, offset: endLocal, q };
   };
 
   const positionPanel = () => {
@@ -569,7 +584,14 @@ function attachMention(editor, source) {
   editor.addEventListener('input', openPanel);
   editor.addEventListener('keyup', (e) => { if (e.key === ' ') close(); else openPanel(); });
   editor.addEventListener('click', openPanel);
-  editor.addEventListener('blur', () => setTimeout(close, 150));
+  editor.addEventListener('blur', () => {
+    /* 延迟关闭，并排除 iOS 键盘动画期间的误触失焦；焦点回到编辑器或落在面板内则不关 */
+    setTimeout(() => {
+      const a = document.activeElement;
+      if (a === editor || panel.contains(a) || editor.contains(a)) return;
+      close();
+    }, 220);
+  });
   editor.addEventListener('keydown', (e) => {
     if (!open) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % Math.max(items.length, 1); renderItems(); }
