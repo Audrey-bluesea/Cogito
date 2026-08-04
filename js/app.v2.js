@@ -41,10 +41,25 @@ export function nav(hash, replace = false) {
   else location.hash = hash;
 }
 
+/* ---------- 列表视图缓存 + 滚动位置记忆 ---------- */
+/* 回到已渲染过的列表页时，直接复用 DOM 节点（不重读 IndexedDB / 不重建），
+   并恢复离开时的 scrollTop，消除「返回跳顶部 + 卡顿 1 秒」的刷新感。 */
+const LIST_TABS = ['flow', 'journals', 'memos', 'books', 'movies'];
+const listCache = new Map();      // tab -> 已渲染的列表 DOM 节点
+const scrollMemory = new Map();   // tab -> 离开列表时记录的 scrollTop
+let currentTab = null;
+let currentMode = null;
+
 /* ---------- 渲染 ---------- */
 async function render() {
   if (rendering) return;
   rendering = true;
+
+  // 1) 离开前：若当前是数据类列表页，记录其滚动位置（节点尚在文档中，scrollTop 准确）
+  if (currentMode === 'list' && currentTab && LIST_TABS.includes(currentTab)) {
+    const sc = viewEl.querySelector('.scroll');
+    if (sc) scrollMemory.set(currentTab, sc.scrollTop);
+  }
 
   const { tab, mode, id, query } = parse();
   document.body.classList.toggle('editing', mode === 'edit');
@@ -57,11 +72,18 @@ async function render() {
 
   viewEl.classList.add('fading');
   const mod = MODULES[tab];
+  const cacheable = mode === 'list' && LIST_TABS.includes(tab);
+  let reused = false;
 
   let node;
   try {
-    if (mode === 'list') node = await mod.list(nav, query);
-    else if (mode === 'detail') node = mod.detail ? await mod.detail(id, nav, query) : await mod.list(nav, query);
+    if (cacheable && listCache.has(tab)) {
+      node = listCache.get(tab);          // 复用已渲染节点：零 DB 读取、零重建 → 无卡顿
+      reused = true;
+    } else if (mode === 'list') {
+      node = await mod.list(nav, query);
+      if (cacheable) listCache.set(tab, node);
+    } else if (mode === 'detail') node = mod.detail ? await mod.detail(id, nav, query) : await mod.list(nav, query);
     else if (mode === 'checkin') node = mod.checkin ? await mod.checkin(nav, query) : await mod.list(nav, query);
     else node = mod.edit ? await mod.edit(id, nav, query) : await mod.list(nav, query);
   } catch (err) {
@@ -80,14 +102,26 @@ async function render() {
   await new Promise(r => setTimeout(r, 180));
   viewEl.innerHTML = '';
   viewEl.appendChild(node);
+
+  // 2) 进入列表页：仅当复用已渲染节点时，恢复离开前的滚动位置（避免误用到新建节点的旧位移）
+  if (reused && scrollMemory.has(tab)) {
+    const sc = node.querySelector('.scroll');
+    if (sc) sc.scrollTop = scrollMemory.get(tab);
+  }
+
   requestAnimationFrame(() => viewEl.classList.remove('fading'));
 
+  currentTab = tab;
+  currentMode = mode;
   rendering = false;
 }
 
 window.addEventListener('hashchange', render);
 window.addEventListener('popstate', render);            /* 覆盖 iOS PWA 系统左滑返回：导航事件未触发时也重渲染 */
-window.addEventListener('cogito:dbchange', render);  /* 数据变更即刷新当前视图（双保险） */
+window.addEventListener('cogito:dbchange', () => {
+  listCache.clear();   /* 数据已变更：作废列表缓存，下次进入列表重建以反映最新数据 */
+  render();
+});
 
 /* ---------- 禁止缩放（iOS Safari 双指 / 双击）---------- */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
