@@ -15,7 +15,8 @@ const MODULES = { flow, journals: journal, memos: memo, books: books, movies: mo
 const TABS = ['flow', 'journals', 'memos', 'books', 'movies'];
 
 const viewEl = document.getElementById('view');
-let rendering = false;
+let renderToken = 0;          // 防止并发渲染互相覆盖（最新一次获胜）
+let lastHash = null, lastTs = 0;  // 去重：popstate+hashchange 双触发只渲染一次
 
 /* ---------- 路由解析 ---------- */
 function parse() {
@@ -35,10 +36,29 @@ function parse() {
 }
 
 /** 统一导航入口；replace=true 时用 replaceState 并强制重绘 */
+/** 取 hash 的所属模块（tab） */
+function tabOf(hash) {
+  const seg = (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+  const ROUTES = ['flow', 'journals', 'memos', 'books', 'movies', 'settings', 'search'];
+  return ROUTES.includes(seg[0]) ? seg[0] : 'flow';
+}
+
 export function nav(hash, replace = false) {
-  if (replace && location.hash === hash) { render(); return; }
-  if (replace) { history.replaceState(null, '', hash); render(); }
-  else location.hash = hash;
+  if (replace) {
+    if (location.hash === hash) { render(true); return; }
+    history.replaceState(null, '', hash); render(true); return;
+  }
+  // 跨模块进入详情/编辑页时，先在历史栈压入「该模块列表」，
+  // 使 iOS 系统右滑返回落回模块列表，而非穿越到来源页
+  // （如在「书籍」提及区点开备忘，返回应回备忘列表而非书籍）
+  const t = tabOf(hash);
+  const c = tabOf(location.hash);
+  const rest = (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean)[1] || '';
+  const deep = rest && rest !== 'checkin';
+  if (t && t !== c && t !== 'settings' && t !== 'search' && deep) {
+    history.pushState(null, '', '#/' + t);  // 不触发 hashchange/popstate，无额外渲染
+  }
+  location.hash = hash;
 }
 
 /* ---------- 列表视图缓存 + 滚动位置记忆 ---------- */
@@ -51,11 +71,14 @@ let currentTab = null;
 let currentMode = null;
 
 /* ---------- 渲染 ---------- */
-async function render() {
-  if (rendering) return;
-  rendering = true;
+async function render(force = false) {
+  const myToken = ++renderToken;
+  const h0 = location.hash || '#/';
+  const now = Date.now();
+  if (!force && h0 === lastHash && now - lastTs < 120) return;  // popstate+hashchange 双触发去重
+  lastHash = h0; lastTs = now;
 
-  // 1) 离开前：若当前是数据类列表页，记录其滚动位置（节点尚在文档中，scrollTop 准确）
+  // 离开前：若当前是数据类列表页，记录其滚动位置（节点尚在文档中，scrollTop 准确）
   if (currentMode === 'list' && currentTab && LIST_TABS.includes(currentTab)) {
     const sc = viewEl.querySelector('.scroll');
     if (sc) scrollMemory.set(currentTab, sc.scrollTop);
@@ -98,29 +121,42 @@ async function render() {
     </div>`;
   }
 
-  // 等待淡出完成（0.2s，与 CSS 一致）
-  await new Promise(r => setTimeout(r, 180));
-  viewEl.innerHTML = '';
-  viewEl.appendChild(node);
+  if (myToken !== renderToken) return;     // 已有更新的渲染接管，放弃本次
 
-  // 2) 进入列表页：仅当复用已渲染节点时，恢复离开前的滚动位置（避免误用到新建节点的旧位移）
-  if (reused && scrollMemory.has(tab)) {
-    const sc = node.querySelector('.scroll');
-    if (sc) sc.scrollTop = scrollMemory.get(tab);
+  const restore = () => {
+    if (reused && scrollMemory.has(tab)) {  // 仅复用缓存节点时恢复滚动位置
+      const sc = node.querySelector('.scroll');
+      if (sc) sc.scrollTop = scrollMemory.get(tab);
+    }
+  };
+
+  // 复用缓存节点（返回列表）：直接换节点，不跑整屏淡出淡入 → 消除「闪一下」
+  if (reused) {
+    viewEl.classList.remove('fading');   // 兜底：清除可能残留的淡出透明态，避免内容不可见
+    viewEl.innerHTML = '';
+    viewEl.appendChild(node);
+    restore();
+    currentTab = tab; currentMode = mode;
+    return;
   }
 
+  viewEl.classList.add('fading');
+  await new Promise(r => setTimeout(r, 160));
+  if (myToken !== renderToken) return;
+  viewEl.innerHTML = '';
+  viewEl.appendChild(node);
+  restore();
   requestAnimationFrame(() => viewEl.classList.remove('fading'));
 
   currentTab = tab;
   currentMode = mode;
-  rendering = false;
 }
 
-window.addEventListener('hashchange', render);
-window.addEventListener('popstate', render);            /* 覆盖 iOS PWA 系统左滑返回：导航事件未触发时也重渲染 */
+window.addEventListener('hashchange', () => render());
+window.addEventListener('popstate', () => render());
 window.addEventListener('cogito:dbchange', () => {
   listCache.clear();   /* 数据已变更：作废列表缓存，下次进入列表重建以反映最新数据 */
-  render();
+  render(true);
 });
 
 /* ---------- 禁止缩放（iOS Safari 双指 / 双击）---------- */
