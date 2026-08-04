@@ -72,11 +72,13 @@ let currentMode = null;
 
 /* ---------- 渲染 ---------- */
 async function render(force = false) {
-  const myToken = ++renderToken;
   const h0 = location.hash || '#/';
   const now = Date.now();
+  // ⚠️ 去重必须放在 ++renderToken 之前：否则去重提前 return 也会消耗 token，
+  // 导致真正在飞的 render 看到 token 已变而中途放弃（既不插内容也不去 fading）→ 整页空白。
   if (!force && h0 === lastHash && now - lastTs < 120) return;  // popstate+hashchange 双触发去重
   lastHash = h0; lastTs = now;
+  const myToken = ++renderToken;
 
   // 离开前：若当前是数据类列表页，记录其滚动位置（节点尚在文档中，scrollTop 准确）
   if (currentMode === 'list' && currentTab && LIST_TABS.includes(currentTab)) {

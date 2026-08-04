@@ -128,7 +128,7 @@ function card(r, nav, q) {
   );
   return swipeRow(c, {
     onTap: () => nav('#/memos/d/' + r.id + qx),
-    onEdit: () => nav('#/memos/' + r.id + qx, true),
+    onEdit: () => nav('#/memos/' + r.id + qx),
     onDelete: async () => {
       if (await confirmSheet({ title: '删除这条备忘？', message: '删除后无法恢复', confirmText: '删除' })) {
         await db.remove(STORE, r.id); toast('已删除'); nav('#/memos' + qx, true);
