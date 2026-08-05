@@ -1,7 +1,7 @@
 /* ═══════════ 模块 4：影视收藏 Movies ═══════════ */
 import { db, getCustomOptions } from '../db.v2.js';
 import {
-  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select, selectCustom,
+  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, select, selectCustom, richBody,
   multiSelectCustom,
   starRating, starsStatic, imagePicker, swipeRow, confirmSheet, toast, todayISO, nowLocalDT, fmtDate, fmtMonth,
   findMentions, stripBody, truncate
@@ -163,8 +163,8 @@ export async function detail(id, nav, query) {
         )
       )
     ),
-    (r.review || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'REVIEW' }, '短评'), h('div', { class: 'd-content' }, (r.review || '').trim())) : null,
-    (r.excerpt || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'QUOTE' }, '摘抄'), h('div', { class: 'd-content' }, (r.excerpt || '').trim())) : null
+    (r.review || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'REVIEW' }, '短评'), h('div', { class: 'd-content', html: r.review || '' })) : null,
+    (r.excerpt || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'QUOTE' }, '摘抄'), h('div', { class: 'd-content', html: r.excerpt || '' })) : null
   );
 
   const backlinks = await findMentions('movie', r.id);
@@ -228,8 +228,8 @@ export async function edit(id, nav) {
 
   const rating = starRating(rec?.rating || 0);
   const poster = imagePicker(rec?.poster || '', 'movie');
-  const review = textarea({ value: rec?.review || '', maxlength: 300, small: true });
-  const excerpt = textarea({ value: rec?.excerpt || '', maxlength: 500, small: true });
+  const review = richBody(rec?.review || '', { withImage: false, mention: null });
+  const excerpt = richBody(rec?.excerpt || '', { withImage: false, mention: null });
 
   const form = [
     field('海报图', poster.el),

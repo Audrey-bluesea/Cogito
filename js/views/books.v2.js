@@ -1,7 +1,7 @@
 /* ═══════════ 模块 3：书籍收藏 Books ═══════════ */
 import { db, getCustomOptions } from '../db.v2.js';
 import {
-  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select, selectCustom,
+  h, icon, pageShell, editorShell, detailShell, emptyState, field, input, select, selectCustom, richBody,
   multiSelectCustom,
   radioGroup, starRating, starsStatic, imagePicker, swipeRow, confirmSheet, toast, todayISO, fmtDate,
   findMentions, stripBody, truncate
@@ -168,8 +168,8 @@ export async function detail(id, nav, query) {
         )
       )
     ),
-    (r.reason || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'REVIEW' }, '短评'), h('div', { class: 'd-content' }, (r.reason || '').trim())) : null,
-    (r.excerpt || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'QUOTE' }, '摘抄'), h('div', { class: 'd-content' }, (r.excerpt || '').trim())) : null
+    (r.reason || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'REVIEW' }, '短评'), h('div', { class: 'd-content', html: r.reason || '' })) : null,
+    (r.excerpt || '').trim() ? h('div', { class: 'd-section' }, h('div', { class: 'd-label', 'data-en': 'QUOTE' }, '摘抄'), h('div', { class: 'd-content', html: r.excerpt || '' })) : null
   );
 
   const backlinks = await findMentions('book', r.id);
@@ -230,8 +230,8 @@ export async function edit(id, nav) {
   const cover = imagePicker(rec?.cover || '', 'bookmark');
   const method = radioGroup(METHODS, rec?.method || METHODS[0]);
   const rating = starRating(rec?.rating || 0);
-  const reason = textarea({ value: rec?.reason || '', maxlength: 200, small: true });
-  const excerpt = textarea({ value: rec?.excerpt || '', maxlength: 500, small: true });
+  const reason = richBody(rec?.reason || '', { withImage: false, mention: null });
+  const excerpt = richBody(rec?.excerpt || '', { withImage: false, mention: null });
 
   const form = [
     field('封面图片', cover.el),
