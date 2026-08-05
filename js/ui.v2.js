@@ -452,7 +452,117 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, [icon('image'), ' 插入图片']));
     bar.appendChild(fileInput);
   }
-  const wrap = h('div', { class: 'rte-wrap' }, bar, editor);
+
+  /* ── 富文本格式工具栏（扩展 rte-bar）──
+     移动端要点：点工具栏按钮时编辑器易失焦丢选区，故按钮 mousedown 均 preventDefault 保住选区；
+     颜色/高亮需先存选区、在弹层里选色后再恢复选区执行命令。 */
+  try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+  let savedRange = null;
+  const saveRange = () => {
+    try { const s = window.getSelection(); if (s.rangeCount && editor.contains(s.anchorNode)) return s.getRangeAt(0).cloneRange(); } catch (e) {}
+    return null;
+  };
+  const refreshStates = () => {
+    try {
+      bar.querySelectorAll('[data-cmd]').forEach((b) => {
+        const on = document.queryCommandState(b.dataset.cmd);
+        b.classList.toggle('on', !!on);
+      });
+    } catch (e) {}
+  };
+  const fmt = (cmd, val) => {
+    // iOS 点工具栏按钮时选区会被 touch 塌缩，故先恢复最近一次有效选区再执行命令
+    const s = window.getSelection();
+    if (savedRange && (!s.rangeCount || s.getRangeAt(0).collapsed)) {
+      try { s.removeAllRanges(); s.addRange(savedRange); } catch (e) {}
+    }
+    editor.focus();
+    try { document.execCommand(cmd, false, val || null); } catch (e) {}
+    refreshStates();
+  };
+  const tool = (label, cmd, val, title, stateCmd) => h('button', {
+    type: 'button', class: 'rte-tool', title: title || label,
+    ...(stateCmd ? { dataset: { cmd: stateCmd } } : {}),
+    onmousedown: (e) => e.preventDefault(),
+    onclick: () => fmt(cmd, val)
+  }, label);
+
+  // 颜色 / 高亮 弹层
+  const pop = h('div', { class: 'rte-pop', style: { display: 'none' } });
+  const SWATCHES = ['#000000','#ffffff','#e03131','#f08c00','#f2c200','#2f9e44','#0c8599','#1971c2','#6741d9','#e64980','#795548','#868e96'];
+  let popMode = 'fore';
+  const applyColor = (color, clearOnly) => {
+    const s = window.getSelection();
+    if (savedRange) { try { s.removeAllRanges(); s.addRange(savedRange); } catch (e) {} }
+    editor.focus();
+    try {
+      if (clearOnly) document.execCommand('hiliteColor', false, 'transparent');
+      else document.execCommand(popMode === 'fore' ? 'foreColor' : 'hiliteColor', false, color);
+    } catch (e) {}
+    refreshStates();
+  };
+  const closePop = () => { pop.style.display = 'none'; document.removeEventListener('mousedown', outside, true); };
+  const outside = (e) => {
+    if (!pop.contains(e.target) && !(e.target.closest && e.target.closest('.rte-tool-color'))) {
+      pop.style.display = 'none';
+      document.removeEventListener('mousedown', outside, true);
+    }
+  };
+  const buildPop = () => {
+    pop.innerHTML = '';
+    const grid = h('div', { class: 'sw-row' });
+    SWATCHES.forEach((c) => {
+      grid.appendChild(h('button', {
+        type: 'button', class: 'swatch', style: { background: c }, title: c,
+        onmousedown: (e) => e.preventDefault(),
+        onclick: () => { applyColor(c); closePop(); }
+      }));
+    });
+    pop.appendChild(grid);
+    const colorInput = h('input', { type: 'color', class: 'rte-color', value: '#1971c2' });
+    colorInput.addEventListener('change', () => { applyColor(colorInput.value); closePop(); });
+    pop.appendChild(h('label', { class: 'rte-color-label' }, [colorInput, ' 自定义颜色']));
+    if (popMode === 'hilite') {
+      pop.appendChild(h('button', {
+        type: 'button', class: 'rte-clear',
+        onmousedown: (e) => e.preventDefault(),
+        onclick: () => { applyColor(null, true); closePop(); }
+      }, '清除高亮'));
+    }
+  };
+  const openPop = (mode) => {
+    popMode = mode; buildPop();
+    savedRange = saveRange();
+    pop.style.display = 'block';
+    setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
+  };
+  const colorBtn = (label, mode, title) => h('button', {
+    type: 'button', class: 'rte-tool rte-tool-color', title: title,
+    onmousedown: (e) => e.preventDefault(),
+    onclick: () => openPop(mode)
+  }, label);
+
+  editor.addEventListener('keyup', refreshStates);
+  editor.addEventListener('click', refreshStates);
+  document.addEventListener('selectionchange', () => {
+    try {
+      if (document.activeElement === editor) { savedRange = saveRange(); refreshStates(); }
+    } catch (e) {}
+  });
+
+  // 插入格式按钮（与插入图片并排）
+  bar.appendChild(tool('B', 'bold', null, '加粗', 'bold'));
+  bar.appendChild(tool('I', 'italic', null, '斜体', 'italic'));
+  bar.appendChild(tool('U', 'underline', null, '下划线', 'underline'));
+  bar.appendChild(tool('A−', 'fontSize', '2', '缩小字号'));
+  bar.appendChild(tool('A+', 'fontSize', '6', '放大字号'));
+  bar.appendChild(tool('1.', 'insertOrderedList', null, '编号列表'));
+  bar.appendChild(tool('•', 'insertUnorderedList', null, '项目符号'));
+  bar.appendChild(colorBtn('🎨', 'fore', '文字颜色'));
+  bar.appendChild(colorBtn('🖍', 'hilite', '高亮'));
+  bar.appendChild(tool('⌫', 'removeFormat', null, '清除格式'));
+
+  const wrap = h('div', { class: 'rte-wrap' }, bar, editor, pop);
   if (mention) attachMention(editor, mention);
   return {
     el: wrap,

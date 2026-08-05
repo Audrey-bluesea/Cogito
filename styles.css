@@ -1243,8 +1243,8 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .d-info > .d-meta:first-child { margin-top: 0; }
 
 /* ═══════ 富文本编辑器（备忘正文内联图片） ═══════ */
-.rte-wrap { display: flex; flex-direction: column; gap: .45rem; }
-.rte-bar { display: flex; gap: .5rem; }
+.rte-wrap { display: flex; flex-direction: column; gap: .45rem; position: relative; }
+.rte-bar { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; padding: .45rem 0; border-bottom: 1px solid var(--border); }
 .rte {
   min-height: 7rem; border: 1px solid var(--border); border-radius: var(--radius);
   padding: .65rem .72rem; font-size: .95rem; line-height: 1.85;
@@ -1253,6 +1253,27 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 }
 .rte:focus { border-color: var(--accent); }
 .rte img.rte-img { max-width: 100%; border-radius: var(--radius); margin: .4rem 0; display: block; }
+/* 富文本工具栏按钮 + 颜色弹层 */
+.rte-tool {
+  min-width: 30px; height: 30px; padding: 0 .4rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: var(--card); border-radius: 8px;
+  font-size: .82rem; line-height: 1; color: var(--text);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.rte-tool.on { background: var(--tint); border-color: var(--accent); color: var(--accent-d); }
+.rte-tool:active { transform: scale(.93); }
+.rte-pop {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 60;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: .6rem; max-width: 280px;
+}
+.sw-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: .35rem; margin-bottom: .5rem; }
+.swatch { width: 26px; height: 26px; padding: 0; border-radius: 6px; border: 1px solid rgba(0,0,0,.15); cursor: pointer; }
+.swatch:active { transform: scale(.9); }
+.rte-color-label { display: flex; align-items: center; gap: .4rem; font-size: .76rem; color: var(--muted); }
+.rte-color { width: 30px; height: 30px; padding: 0; border: none; background: none; cursor: pointer; }
+.rte-clear { margin-top: .45rem; width: 100%; padding: .4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); font-size: .76rem; color: var(--text); cursor: pointer; }
 /* 详情页里的内联图片 */
 .d-content img { max-width: 100%; border-radius: var(--radius); margin: .5rem 0; display: block; }
 
