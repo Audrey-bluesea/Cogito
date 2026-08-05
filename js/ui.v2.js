@@ -449,7 +449,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
         fileInput.value = '';
       }
     });
-    bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, [icon('image'), ' 插图']));
+    bar.appendChild(h('button', { type: 'button', class: 'rte-tool', onclick: () => fileInput.click() }, icon('image')));
     bar.appendChild(fileInput);
   }
 

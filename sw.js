@@ -3,7 +3,7 @@
    静态资源预缓存 + 离线优先（Cache First, Network Fallback）
    ═══════════════════════════════════════════════════ */
 
-const CACHE = 'cogito-v90';
+const CACHE = 'cogito-v91';
 
 const ASSETS = [
   './',
