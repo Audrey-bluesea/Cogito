@@ -489,7 +489,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
 
   // 颜色 / 高亮 弹层
   const pop = h('div', { class: 'rte-pop', style: { display: 'none' } });
-  const SWATCHES = ['#000000','#ffffff','#e03131','#f08c00','#f2c200','#2f9e44','#0c8599','#1971c2','#6741d9','#e64980','#795548','#868e96'];
+  const SWATCHES = ['#F5D4D4','#C8E0D8','#F5ECD4','#D8D0E8','#D0E0ED','#F5DCC8'];
   let popMode = 'fore';
   const applyColor = (color, clearOnly) => {
     const s = window.getSelection();
@@ -554,8 +554,6 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   bar.appendChild(tool('B', 'bold', null, '加粗', 'bold'));
   bar.appendChild(tool('I', 'italic', null, '斜体', 'italic'));
   bar.appendChild(tool('U', 'underline', null, '下划线', 'underline'));
-  bar.appendChild(tool('A−', 'fontSize', '2', '缩小字号'));
-  bar.appendChild(tool('A+', 'fontSize', '6', '放大字号'));
   bar.appendChild(tool('1.', 'insertOrderedList', null, '编号列表'));
   bar.appendChild(tool('•', 'insertUnorderedList', null, '项目符号'));
   bar.appendChild(colorBtn('🎨', 'fore', '文字颜色'));
