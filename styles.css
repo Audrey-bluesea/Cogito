@@ -703,15 +703,15 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .rc-cell.can-check:active { transform: scale(.92); }
 /* 🟦 首页今日打卡方块：纯图形、无文字、方块+勾，呼应年历打卡格 (.rc-cell.checked) */
 .fc-box {
-  width: 1.95rem; height: 1.95rem; flex: 0 0 auto;
-  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; flex: 0 0 auto;
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
   border: 1px dashed color-mix(in srgb, var(--text) 24%, transparent);
   background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: transform .12s ease, background .15s ease, border-color .15s ease;
 }
 .fc-box::after { content: ''; }
 .fc-box.checked { background: var(--accent); border: 1px solid var(--accent); }
-.fc-box.checked::after { content: '✓'; color: #fff; font-size: .95rem; font-weight: 700; line-height: 1; }
+.fc-box.checked::after { content: '✓'; color: #fff; font-size: .75rem; font-weight: 700; line-height: 1; }
 .fc-box:active { transform: scale(.92); }
 .rc-tip { text-align: center; font-size: .62rem; color: var(--muted); margin: .8rem auto 1.5rem; }
 
