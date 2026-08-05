@@ -449,7 +449,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
         fileInput.value = '';
       }
     });
-    bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, [icon('image'), ' 插入图片']));
+    bar.appendChild(h('button', { type: 'button', class: 'btn-soft', onclick: () => fileInput.click() }, '插图'));
     bar.appendChild(fileInput);
   }
 
@@ -489,7 +489,9 @@ export function richBody(initial = '', { withImage = true, mention = null, place
 
   // 颜色 / 高亮 弹层
   const pop = h('div', { class: 'rte-pop', style: { display: 'none' } });
-  const SWATCHES = ['#F5D4D4','#C8E0D8','#F5ECD4','#D8D0E8','#D0E0ED','#F5DCC8'];
+  // 文字颜色用深色系（前景可读），高亮用粉彩系（背景柔和）
+  const FORE_SWATCHES = ['#4D4A45','#A39D95','#D4A88A','#C8B8D4','#88B5C6','#B8848A','#8AA89A','#C8BC8A','#C8A8A8','#A89080','#8A9AA8'];
+  const HILITE_SWATCHES = ['#F5D4D4','#C8E0D8','#F5ECD4','#D8D0E8','#D0E0ED','#F5DCC8'];
   let popMode = 'fore';
   const applyColor = (color, clearOnly) => {
     const s = window.getSelection();
@@ -511,7 +513,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   const buildPop = () => {
     pop.innerHTML = '';
     const grid = h('div', { class: 'sw-row' });
-    SWATCHES.forEach((c) => {
+    (popMode === 'fore' ? FORE_SWATCHES : HILITE_SWATCHES).forEach((c) => {
       grid.appendChild(h('button', {
         type: 'button', class: 'swatch', style: { background: c }, title: c,
         onmousedown: (e) => e.preventDefault(),
