@@ -20,6 +20,7 @@ let viewMode = 'grid';
 
 export async function list(nav) {
   viewMode = (await db.metaGet('books:view', 'grid')) || 'grid';
+  const collapsed = new Set((await db.metaGet('books:collapsed', null)) || ['想读', '读完']);
   const rows = (await db.all(STORE))
     .map(r => r.status === '弃读' ? { ...r, status: '想读' } : r)
     .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
@@ -53,12 +54,24 @@ export async function list(nav) {
     const groups = STATUS_ORDER.filter(s => shown.some(r => r.status === s));
     content = h('div', {}, ...groups.map(g => {
       const items = shown.filter(r => r.status === g);
-      return h('div', {},
-        h('div', { class: 'group-title' }, `${g} · ${items.length}`),
-        viewMode === 'grid'
-          ? h('div', { class: 'grid' }, ...items.map(r => gridCard(r, nav)))
-          : h('div', {}, ...items.map(r => listCard(r, nav)))
+      const isCollapsed = collapsed.has(g);
+      const body = viewMode === 'grid'
+        ? h('div', { class: 'group-body' }, h('div', { class: 'grid' }, ...items.map(r => gridCard(r, nav))))
+        : h('div', { class: 'group-body' }, ...items.map(r => listCard(r, nav)));
+      if (isCollapsed) body.style.display = 'none';
+      const hdr = h('div', {
+        class: 'group-title collapsible' + (isCollapsed ? ' collapsed' : ''),
+        onclick: () => {
+          const now = hdr.classList.toggle('collapsed');
+          body.style.display = now ? 'none' : '';
+          if (now) collapsed.add(g); else collapsed.delete(g);
+          db.metaSet('books:collapsed', [...collapsed]);
+        }
+      },
+        h('span', { class: 'group-arrow' }, '▾'),
+        h('span', { class: 'group-name' }, `${g} · ${items.length}`)
       );
+      return h('div', {}, hdr, body);
     }));
   }
 

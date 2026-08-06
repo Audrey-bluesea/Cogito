@@ -925,6 +925,11 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
   margin: 1rem .1rem .55rem; font-size: .8rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; font-family: var(--font-title);
 }
 .group-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+/* 状态分组折叠（书籍/影视列表）— 视觉对齐日记月分组 */
+.group-title.collapsible { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.group-arrow { flex: 0 0 auto; font-size: 1.05rem; line-height: 1; color: var(--text); transition: transform .2s ease; }
+.group-title.collapsed .group-arrow { transform: rotate(-90deg); }
+.group-body { /* 展开态容器；collapsed 时由 JS 设 display:none */ }
 
 /* 列表模式书籍 */
 .lcard { display: flex; gap: .75rem; align-items: stretch; }
