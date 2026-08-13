@@ -103,9 +103,11 @@ export const db = {
     const data = payload && payload.data ? payload.data : payload;
     if (!data || typeof data !== 'object') throw new Error('备份文件格式不正确');
     let count = 0;
+    // 全量还原：对备份中包含的每个 store，先清空再写入，移除备份里不存在的残留记录
     for (const s of STORES) {
       const arr = data[s];
-      if (!Array.isArray(arr)) continue;
+      if (!Array.isArray(arr)) continue;            // 备份未包含此表 → 不动，避免误清空现有数据
+      await tx(s, 'readwrite', st => st.clear());
       for (const rec of arr) {
         if (rec && rec.id) { await tx(s, 'readwrite', st => st.put(rec)); count++; }
       }
