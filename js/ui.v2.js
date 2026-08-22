@@ -838,7 +838,7 @@ export async function selectCustom(key, presets, value = '', opts = {}) {
     };
     el.appendChild(h('button', {
       type: 'button', class: 'link-btn',
-      style: { fontSize: '.82rem', color: 'var(--text)', marginTop: '.4rem', display: 'block', textDecoration: 'underline', textUnderlineOffset: '2px' },
+      style: { fontSize: '.78rem', color: 'var(--text)', marginTop: '.4rem', display: 'block', textDecoration: 'underline', textUnderlineOffset: '2px' },
       onclick: () => manageOptions(key, presets, { ...opts, onChange: refreshSelect })
     }, '管理自定义项'));
   }
