@@ -351,19 +351,15 @@ export async function edit(id, nav, query) {
   const body = richBody(rec?.content || '', { withImage: true, mention: src, placeholder: journalPrompt() });
 
   const form = [
-    // 核心属性条：日期 / 心情 / 天气，置于正文上方，随手即可填
-    h('div', { class: 'jr-core' },
-      field('日期', dateIn, { required: true }),
-      field('心情', mood.el, { required: true }),
-      field('天气', wxSel)
-    ),
-    // 正文置顶：打开即聚焦，先写再补属性，不打断思绪
-    field('正文内容', body.el),
-    // 其余属性折叠进「更多」，需要时才展开
-    h('details', { class: 'more' },
-      h('summary', {}, '更多选项'),
-      h('div', { class: 'field' },
-        h('label', {}, '温度（可选）'),
+    // 日期 + 星期
+    field('日期', h('div', { class: 'two' }, dateIn, weekIn), { required: true }),
+    // 心情
+    field('心情', mood.el, { required: true }),
+    // 天气 + 温度（每天要记）
+    h('div', { class: 'field' },
+      h('label', {}, '天气与温度'),
+      h('div', { class: 'weather-box' },
+        wxSel,
         h('div', { class: 'temp-range' },
           h('span', {}, '🌡️'),
           tempMinIn,
@@ -371,17 +367,24 @@ export async function edit(id, nav, query) {
           tempMaxIn,
           h('span', { style: { color: 'var(--muted)' } }, '℃')
         )
-      ),
-      field('关键字', kwIn),
-      field('插图', illus.el),
-      h('div', { class: 'field' },
-        h('label', {}, '今日三餐'),
-        h('div', { class: 'col-gap' },
-          h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌅'), breakIn),
-          h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '☀️'), lunchIn),
-          h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌙'), dinnerIn)
-        )
       )
+    ),
+    // 正文置顶：打开即聚焦
+    field('正文内容', body.el),
+    // 今日三餐
+    h('div', { class: 'field' },
+      h('label', {}, '今日三餐'),
+      h('div', { class: 'col-gap' },
+        h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌅'), breakIn),
+        h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '☀️'), lunchIn),
+        h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌙'), dinnerIn)
+      )
+    ),
+    // 其余属性折叠进「更多」
+    h('details', { class: 'more' },
+      h('summary', {}, '更多选项'),
+      field('关键字', kwIn),
+      field('插图', illus.el)
     )
   ];
 
