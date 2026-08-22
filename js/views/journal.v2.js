@@ -3,7 +3,7 @@ import { db } from '../db.v2.js';
 import {
   h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select,
   emojiPicker, imagePicker, swipeRow, confirmSheet, toast, todayISO, weekdayCN, dayOf, monOf, fmtDate,
-  richBody, mentionSource, stripBody, renderBody, truncate, globalSearchRow, nowLocalDT
+  richBody, mentionSource, stripBody, renderBody, truncate, globalSearchRow, nowLocalDT, journalAmbiance
 } from '../ui.v2.js';
 import { WEATHER_OPTIONS, DEFAULT_WEATHER } from '../weather.v2.js';
 
@@ -242,7 +242,7 @@ function card(r, nav, q) {
           h('span', { class: 'jr-meta' }, `${weekdayCN(r.date)} · ${r.weather || ''} ${tempLabel(r)}`),
           h('span', { style: { fontSize: '1.15rem' } }, r.mood || '😊')
         ),
-        h('p', { class: 'card-body', style: { marginTop: '.3rem' } }, excerpt ? excerpt : '（空白的一页）'),
+        h('p', { class: 'card-body' + (excerpt ? '' : ' ambiance-text'), style: { marginTop: '.3rem' } }, excerpt || journalAmbiance(r)),
         r.illustration
           ? h('img', { class: 'jr-illus', src: r.illustration, alt: '插图' })
           : null,
@@ -275,7 +275,11 @@ export async function detail(id, nav, query) {
   const dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   const meta = [weekdayCN(r.date), (r.weather || ''), tempLabel(r)].filter(Boolean).join(' · ');
   const contentEl = h('div', { class: 'd-content' });
-  await renderBody(contentEl, r.content, nav);
+  if (!r.content || !r.content.trim()) {
+    contentEl.appendChild(h('p', { class: 'ambiance-text d-ambiance' }, journalAmbiance(r)));
+  } else {
+    await renderBody(contentEl, r.content, nav);
+  }
   const content = h('div', { class: 'detail-card' },
     h('div', { class: 'd-head' },
       h('span', { class: 'd-emoji' }, r.mood || '😊'),

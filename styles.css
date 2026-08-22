@@ -722,6 +722,14 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
   opacity: .55;
   pointer-events: none;
 }
+
+/* 空白日记的「系统氛围文案」：弱化色 + 斜体，明显区别于用户自己写的正文 */
+.ambiance-text {
+  color: var(--muted);
+  font-style: italic;
+  opacity: .9;
+}
+.d-ambiance { margin: .2rem 0; }
 .wc-pt {
   position: absolute;
   transform: translate(-50%, -50%);

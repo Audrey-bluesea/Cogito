@@ -393,6 +393,37 @@ export async function renderBody(container, html, nav) {
   }
 }
 
+/* ---------- 空白日记氛围文案（系统配，非用户正文） ---------- */
+const JOURNAL_AMBIANCE = [
+  // 一、温柔日常
+  '今日无话，只留存风和情绪。',
+  '今日没有长篇思绪，简单标记生活碎片。',
+  '思绪放空的一天，仅记下三餐与阴晴。',
+  '今日沉默，把心情、天气好好收藏。',
+  '不必强迫落笔，平淡本身也是日常。',
+  // 二、极简冷淡风
+  '今日无字，仅存生活痕迹。',
+  '思绪留白，记录细碎日常。',
+  '无话可说，仅标记今日状态。',
+  '空白文字，完整生活。',
+  // 三、治愈文艺短句
+  '允许今天只感受，不诉说。',
+  '语言暂时搁置，留住当下的天气与情绪。',
+  '今日大脑放空，烟火与阴晴自有记录。',
+  '有些日子，适合安静存档，无需文字注解。'
+];
+
+/**
+ * 空白日记的氛围文案。按日记 id 稳定哈希取一句，保证同一篇日记永远显示同一句，
+ * 不会因每次渲染而跳变（避免像 bug）。
+ */
+export function journalAmbiance(rec) {
+  const seed = (rec && (rec.id || rec.date)) || '';
+  let hsh = 0;
+  for (let i = 0; i < seed.length; i++) hsh = (hsh * 31 + seed.charCodeAt(i)) >>> 0;
+  return JOURNAL_AMBIANCE[hsh % JOURNAL_AMBIANCE.length];
+}
+
 /** 反向检索：找出正文里 @过 该 book / movie 的日记与备忘 */
 export async function findMentions(type, id) {
   const out = [];

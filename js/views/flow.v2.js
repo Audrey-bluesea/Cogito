@@ -1,6 +1,6 @@
 /* ═══════════ 首页：🌳 时光流 Flow（日签卡片 · 最近 7 天） ═══════════ */
 import { db } from '../db.v2.js';
-import { h, icon, stripBody, truncate, weekdayCN, toast } from '../ui.v2.js';
+import { h, icon, stripBody, truncate, weekdayCN, toast, journalAmbiance } from '../ui.v2.js';
 
 const MOD_ICO = { journals: '📖', memos: '📕', books: '📚', movies: '🎬' };
 const MOD_BAR = { journals: '#DBC4B0', memos: '#EDE0C8', books: '#C6D0C0', movies: '#88B5C6' };
@@ -127,15 +127,17 @@ function timeSlot(iso) {
 
 /** 单条记录行（展开态） */
 function dayRow(it, nav) {
+  const body = it.store === 'journals' ? stripBody(it.rec.content) : '';
+  const isAmbiance = !!body === false && it.store === 'journals';
   let summary;
-  if (it.store === 'journals')      summary = stripBody(it.rec.content) || '（空白日记）';
+  if (it.store === 'journals')      summary = body || journalAmbiance(it.rec);
   else if (it.store === 'memos')     summary = it.rec.title || stripBody(it.rec.content) || '（空白备忘）';
   else                               summary = it.rec.title || '（未命名）';
   const ico = it.store === 'journals' ? (it.rec.mood || '😊') : MOD_ICO[it.store];
 
   const inner = [
     h('span', { class: 'mom-ico' }, ico),
-    h('span', { class: 'mom-summary' }, truncate(summary, 24))
+    h('span', { class: 'mom-summary' + (isAmbiance ? ' ambiance-text' : '') }, truncate(summary, 24))
   ];
   if ((it.store === 'books' || it.store === 'movies') && it.rec.rating) {
     inner.push(h('span', { class: 'mom-rating' }, '⭐ ' + Number(it.rec.rating).toFixed(1)));
@@ -157,12 +159,13 @@ function dayRow(it, nav) {
 /** 折叠态：摘要预览（点击展开当天） */
 function previewLines(items, toggleDay) {
   const lines = items.slice(0, 3).map(it => {
-    let s;
-    if (it.store === 'journals') s = '📖 ' + truncate(stripBody(it.rec.content) || '空白日记', 20);
+    let s, amb = false;
+    const jbody = it.store === 'journals' ? stripBody(it.rec.content) : '';
+    if (it.store === 'journals') s = jbody ? '📖 ' + truncate(jbody, 20) : (amb = true, journalAmbiance(it.rec));
     else if (it.store === 'memos') s = '📕 ' + (it.rec.title || truncate(stripBody(it.rec.content) || '空白备忘', 20));
     else if (it.store === 'books') s = '📚 读完《' + (it.rec.title || '未命名') + '》';
     else                           s = '🎬 看完《' + (it.rec.title || '未命名') + '》';
-    return h('div', { class: 'day-prev-line' }, h('span', {}, s));
+    return h('div', { class: 'day-prev-line' }, h('span', { class: amb ? 'ambiance-text' : '' }, s));
   });
   return h('div', { class: 'day-preview', onclick: () => toggleDay(items[0].date) }, ...lines);
 }
