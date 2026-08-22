@@ -178,10 +178,15 @@ export async function edit(id, nav, query) {
 
   const form = [
     field('标题', titleIn),
+    // 正文置顶 + 打开即聚焦，先写再补属性
+    field('内容', body.el),
+    // 分类是备忘的核心归类，留在可见区；来源/时间收进「更多」
     field('分类', cat.el, { required: true }),
-    field('来源', src),
-    field('记录时间', time, { required: true }),
-    field('内容', body.el)
+    h('details', { class: 'more' },
+      h('summary', {}, '更多选项'),
+      field('来源', src),
+      field('记录时间', time, { required: true })
+    )
   ];
 
   const isEmpty = (html) => {
@@ -207,10 +212,20 @@ export async function edit(id, nav, query) {
   };
 
   const q = (query && query.get) ? (query.get('q') || '') : '';
-  return editorShell({
+  const shell = editorShell({
     title: isNew ? '新建备忘' : '编辑备忘',
     onBack: isNew ? () => nav(q ? '#/memos?q=' + encodeURIComponent(q) : '#/memos', true)
                   : () => nav('#/memos/d/' + id, true),
     form, onSave: save
   });
+  // 打开即聚焦正文：等编辑框挂载到 DOM 后再 focus（richBody.el 是外层 wrap，需聚焦内部 .rte）
+  let _tries = 0;
+  const _focus = () => {
+    const ed = body.el.querySelector('.rte');
+    if (ed && body.el.isConnected) { try { ed.focus(); } catch (e) {} return; }
+    if (++_tries > 120) return;
+    requestAnimationFrame(_focus);
+  };
+  requestAnimationFrame(_focus);
+  return shell;
 }

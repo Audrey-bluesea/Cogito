@@ -1504,3 +1504,24 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
    v53：取消 v52 的全局单色古董纸覆盖，恢复各主题自带彩色底
    纸感与暖度由 body::before 的做旧牛皮纸噪点（multiply）统一提供
    ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   v94：编辑页「正文优先」布局 —— 折叠区(.more) + 日记核心属性条(.jr-core)
+   ═══════════════════════════════════════════════════════════ */
+.more { border-top: 1px solid var(--border); margin-top: .9rem; }
+.more > summary {
+  list-style: none; cursor: pointer; padding: .8rem 0;
+  font-size: .9rem; color: var(--muted); font-weight: 600;
+  display: flex; align-items: center; gap: .35rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::before { content: '▾'; display: inline-block; transition: transform .2s ease; font-size: .78rem; }
+.more:not([open]) > summary::before { transform: rotate(-90deg); }
+.more[open] > summary { color: var(--text); }
+.more > :not(summary) { margin-top: .25rem; }
+
+.jr-core { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; margin-bottom: .2rem; }
+.jr-core > * { flex: 1 1 130px; min-width: 0; }
+.jr-core .field { margin: 0; }
+.jr-core .field label { font-size: .82rem; }

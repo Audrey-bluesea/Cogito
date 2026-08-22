@@ -351,14 +351,19 @@ export async function edit(id, nav, query) {
   const body = richBody(rec?.content || '', { withImage: true, mention: src, placeholder: journalPrompt() });
 
   const form = [
-    h('div', { class: 'two' },
+    // 核心属性条：日期 / 心情 / 天气，置于正文上方，随手即可填
+    h('div', { class: 'jr-core' },
       field('日期', dateIn, { required: true }),
-      field('星期', weekIn)
+      field('心情', mood.el, { required: true }),
+      field('天气', wxSel)
     ),
-    h('div', { class: 'field' },
-      h('label', {}, '天气与温度', h('span', { class: 'req' }, '*')),
-      h('div', { class: 'weather-box' },
-        wxSel,
+    // 正文置顶：打开即聚焦，先写再补属性，不打断思绪
+    field('正文内容', body.el),
+    // 其余属性折叠进「更多」，需要时才展开
+    h('details', { class: 'more' },
+      h('summary', {}, '更多选项'),
+      h('div', { class: 'field' },
+        h('label', {}, '温度（可选）'),
         h('div', { class: 'temp-range' },
           h('span', {}, '🌡️'),
           tempMinIn,
@@ -366,26 +371,23 @@ export async function edit(id, nav, query) {
           tempMaxIn,
           h('span', { style: { color: 'var(--muted)' } }, '℃')
         )
+      ),
+      field('关键字', kwIn),
+      field('插图', illus.el),
+      h('div', { class: 'field' },
+        h('label', {}, '今日三餐'),
+        h('div', { class: 'col-gap' },
+          h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌅'), breakIn),
+          h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '☀️'), lunchIn),
+          h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌙'), dinnerIn)
+        )
       )
-    ),
-    field('心情', mood.el, { required: true }),
-    field('关键字', kwIn),
-    field('插图', illus.el),
-    h('div', { class: 'field' },
-      h('label', {}, '今日三餐'),
-      h('div', { class: 'col-gap' },
-        h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌅'), breakIn),
-        h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '☀️'), lunchIn),
-        h('div', { class: 'meal-row' }, h('span', { class: 'meal-ico' }, '🌙'), dinnerIn)
-      )
-    ),
-    field('正文内容', body.el, { required: true })
+    )
   ];
 
   const save = async () => {
     const html = body.get();
     if (!dateIn.value) return toast('请选择日期');
-    if (!stripBody(html)) return toast('正文还是空的哦 ✏️');
     const keywords = kwIn.value.split(/[,，\s、]+/).map(s => s.trim()).filter(Boolean).slice(0, 5);
     const saved = await db.save(STORE, {
       id: rec?.id, createdAt: rec?.createdAt,
@@ -407,10 +409,20 @@ export async function edit(id, nav, query) {
   };
 
   const q = (query && query.get) ? (query.get('q') || '') : '';
-  return editorShell({
+  const shell = editorShell({
     title: isNew ? '写日记' : '编辑日记',
     onBack: isNew ? () => nav(q ? '#/journals?q=' + encodeURIComponent(q) : '#/journals', true)
                   : () => nav('#/journals/d/' + id, true),
     form, onSave: save
   });
+  // 打开即聚焦正文：等编辑框挂载到 DOM 后再 focus（richBody.el 是外层 wrap，需聚焦内部 .rte）
+  let _tries = 0;
+  const _focus = () => {
+    const ed = body.el.querySelector('.rte');
+    if (ed && body.el.isConnected) { try { ed.focus(); } catch (e) {} return; }
+    if (++_tries > 120) return;
+    requestAnimationFrame(_focus);
+  };
+  requestAnimationFrame(_focus);
+  return shell;
 }
