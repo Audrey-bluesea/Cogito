@@ -7,7 +7,7 @@ import {
 } from '../ui.v2.js';
 
 const STORE = 'memos';
-const CATS = ['Collection', 'Memo', 'Record', 'Common Sense', 'Note', 'Misc'];
+export const CATS = ['Collection', 'Memo', 'Record', 'Common Sense', 'Note', 'Misc'];
 const CAT_COLOR = { Collection: 'mint', Memo: 'peach', Record: 'lav', 'Common Sense': 'accent', Note: '', Misc: '' };
 
 let filterCat = '全部';
@@ -169,7 +169,8 @@ export async function edit(id, nav, query) {
   const rec = id ? await db.get(STORE, id) : null;
   const isNew = !rec;
 
-  const cat = await selectCustom('memoCat', CATS, rec?.category || 'Memo', { store: STORE, field: 'category' });
+  const defCat = await db.metaGet('memo:defaultCat', 'Memo');
+  const cat = await selectCustom('memoCat', CATS, rec?.category || defCat, { store: STORE, field: 'category' });
   const titleIn = input({ placeholder: '', value: rec?.title || '' });
   const src = input({ placeholder: '', value: rec?.source || '' });
   const time = input({ type: 'datetime-local', value: rec?.time ? rec.time.slice(0, 16) : nowLocalDT() });

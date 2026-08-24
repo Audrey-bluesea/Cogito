@@ -3,9 +3,10 @@
    数据保存在本机 IndexedDB，无云端，提供导出/导入保险
    ═══════════════════════════════════════════════════ */
 
-import { db } from '../db.v2.js';
-import { h, icon, pageShell, toast, confirmSheet } from '../ui.v2.js';
+import { db, getCustomOptions } from '../db.v2.js';
+import { h, icon, pageShell, toast, confirmSheet, select } from '../ui.v2.js';
 import { THEMES, applyTheme, getTheme } from '../theme.v2.js';
+import { CATS as MEMO_CATS } from './memo.v3.js';
 
 export async function list(nav) {
   /* ---------- 导入：从文本 / 文件内容恢复 ---------- */
@@ -112,8 +113,25 @@ export async function list(nav) {
     );
   })();
 
+  const memoDefaultCard = await (async () => {
+    const custom = await getCustomOptions('memoCat');
+    const allCats = [...MEMO_CATS, ...custom.filter(c => !MEMO_CATS.includes(c))];
+    const cur = await db.metaGet('memo:defaultCat', 'Memo');
+    const sel = select(allCats, cur, { class: 'select' });
+    sel.addEventListener('change', async () => {
+      await db.metaSet('memo:defaultCat', sel.value);
+      toast('默认分类已设为「' + sel.value + '」');
+    });
+    return h('div', { class: 'card', style: { marginBottom: '.75rem' } },
+      h('h3', { class: 'card-title', style: { marginBottom: '.4rem' } }, '备忘录默认分类'),
+      h('p', { class: 'card-sub', style: { marginBottom: '.6rem', lineHeight: 1.5 } }, '新建备忘时默认选中的分类，可随时修改；未设置过则默认 Memo。'),
+      sel
+    );
+  })();
+
   const content = h('div', { style: { padding: '.25rem' } },
     themeCard,
+    memoDefaultCard,
     h('div', { class: 'card', style: { marginBottom: '.75rem' } },
       h('h3', { class: 'card-title', style: { marginBottom: '.4rem' } }, '关于数据存储'),
       h('p', { class: 'card-sub', style: { lineHeight: 1.55 } },
