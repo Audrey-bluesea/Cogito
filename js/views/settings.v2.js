@@ -11,7 +11,7 @@ import { CATS as MEMO_CATS } from './memo.v3.js';
 export async function list(nav) {
   /* ---------- 导入：从文本 / 文件内容恢复 ---------- */
   const doImport = async (text) => {
-    if (!text || !text.trim()) { toast('请先选择文件或粘贴备份文本'); return; }
+    if (!text || !text.trim()) { toast('请先选择备份文件'); return; }
     let payload;
     try { payload = JSON.parse(text); }
     catch { toast('内容不是有效的备份文本'); return; }
@@ -46,22 +46,6 @@ export async function list(nav) {
     toast('已导出备份文件');
   };
 
-  /* ---------- 导出：复制为文本（iOS 万能备份）---------- */
-  const copyText = async () => {
-    const data = await db.exportAll();
-    const text = JSON.stringify(data);
-    try {
-      await navigator.clipboard.writeText(text);
-      toast('已复制全部数据，可粘贴到备忘录/微信保存');
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '-9999px';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); toast('已复制，请粘贴到备忘录保存'); }
-      catch { toast('复制失败，请手动长按选择'); }
-      ta.remove();
-    }
-  };
 
   /* ---------- 文件选择 ---------- */
   const fileInput = h('input', {
@@ -74,12 +58,6 @@ export async function list(nav) {
     }
   });
 
-  /* ---------- 粘贴文本 ---------- */
-  const pasteArea = h('textarea', {
-    class: 'textarea',
-    placeholder: '',
-    style: { minHeight: '4.5rem', marginTop: '.6rem' }
-  });
 
   /* ---------- 主题选择 ---------- */
   const themeCard = (() => {
@@ -133,28 +111,19 @@ export async function list(nav) {
     themeCard,
     memoDefaultCard,
     h('div', { class: 'card', style: { marginBottom: '.75rem' } },
-      h('h3', { class: 'card-title', style: { marginBottom: '.4rem' } }, '关于数据存储'),
-      h('p', { class: 'card-sub', style: { lineHeight: 1.55 } },
-        '你的所有数据都保存在当前设备的浏览器本地（IndexedDB），没有上传到任何云端。' +
-        '同一台设备、同一个浏览器会一直保留；但换设备、清除网站数据或删除本应用会丢失数据。建议定期导出备份。')
-    ),
-    h('div', { class: 'card', style: { marginBottom: '.75rem' } },
-      h('h3', { class: 'card-title', style: { marginBottom: '.45rem' } }, '导出备份'),
-      h('p', { class: 'card-sub', style: { marginBottom: '.6rem', lineHeight: 1.5 } }, '把全部数据导出保存，以防意外丢失。'),
-      h('div', { class: 'row', style: { gap: '.5rem' } },
-        h('button', { class: 'btn-soft', onclick: exportFile }, '导出文件'),
-        h('button', { class: 'btn-soft', onclick: copyText }, '复制文本')
-      )
-    ),
-    h('div', { class: 'card' },
-      h('h3', { class: 'card-title', style: { marginBottom: '.45rem' } }, '导入恢复'),
-      h('p', { class: 'card-sub', style: { marginBottom: '.6rem', lineHeight: 1.5 } }, '从备份文件或文本恢复数据（按 id 覆盖）。'),
-      h('div', { class: 'row', style: { gap: '.5rem', marginBottom: '.2rem' } },
-        h('button', { class: 'btn-soft', onclick: () => fileInput.click() }, '选择文件'),
-        h('button', { class: 'btn-soft', onclick: () => doImport(pasteArea.value) }, '从文本导入')
+      h('h3', { class: 'card-title', style: { marginBottom: '.55rem' } }, '数据备份'),
+      h('div', { class: 'row', style: { gap: '.55rem' } },
+        h('button', { class: 'btn-soft', style: { display: 'flex', alignItems: 'center', gap: '.35rem', flex: 1, justifyContent: 'center' }, onclick: exportFile }, [
+          h('span', {}, '⬇️'),
+          '导出备份'
+        ]),
+        h('button', { class: 'btn-soft', style: { display: 'flex', alignItems: 'center', gap: '.35rem', flex: 1, justifyContent: 'center' }, onclick: () => fileInput.click() }, [
+          h('span', {}, '⬆️'),
+          '导入备份'
+        ])
       ),
-      pasteArea,
-      fileInput
+      fileInput,
+      h('p', { class: 'card-sub', style: { marginTop: '.55rem', fontSize: '.7rem', lineHeight: 1.45 } }, '数据保存在本机 IndexedDB · 离线可用')
     ),
     h('div', { class: 'card' },
       h('h3', { class: 'card-title', style: { marginBottom: '.45rem' } }, '关于与鸣谢'),
