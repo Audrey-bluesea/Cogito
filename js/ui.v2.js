@@ -700,8 +700,12 @@ function attachMention(editor, source) {
 
     const openPanel = () => {
       const info = queryAt();
-      /* 已打开时保持（比如一次输入触发 input+keyup 两次），不闪烁、不误关 */
-      if (!info) { if (open) { /* keep */ } return; }
+      /* @ 被删或光标移出触发区 → 收起面板（修复：删掉 @ 后面板应消失） */
+      if (!info) { if (open) close(); return; }
+      /* 关键修复：面板未打开时，只有「刚敲下 @ 那一刻（q 为空）」才弹出。
+         正文里残留的裸 @（用户真想输入的字符）不会因点击/输入而反复弹；
+         一旦关闭未选，该 @ 后面已有内容，q 不再为空，便不会再自动弹出。 */
+      if (!open && info.q.length > 0) return;
       captured = info;                       // 冻结选区，失焦后仍能准确插入
       const q = info.q.toLowerCase();
       items = (source || [])
@@ -751,7 +755,6 @@ function attachMention(editor, source) {
 
     editor.addEventListener('input', openPanel);
     editor.addEventListener('keyup', (e) => { if (e.key === ' ') close(); else openPanel(); });
-    editor.addEventListener('click', openPanel);
     editor.addEventListener('keydown', (e) => {
       if (!open) return;
       if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % Math.max(items.length, 1); renderItems(); }
