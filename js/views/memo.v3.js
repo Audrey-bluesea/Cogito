@@ -81,7 +81,6 @@ export async function list(nav, query) {
   return pageShell({
     title: '备忘录', sub: 'Notes', toolbar,
     actions: [
-      h('button', { class: 'icon-btn plus', onclick: () => nav('#/memos/new'), 'aria-label': '新建备忘' }, '＋'),
       searchBtn
     ],
     content

@@ -79,7 +79,6 @@ export async function list(nav) {
     title: '书籍', sub: 'Books', toolbar,
     actions: [
       h('button', { class: 'chip rc-entry', onclick: () => nav('#/books/checkin') }, '✅ 阅读打卡'),
-      h('button', { class: 'icon-btn plus', onclick: () => nav('#/books/new'), 'aria-label': '添加书籍' }, '＋'),
       h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, icon('search'))
     ],
     content

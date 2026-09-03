@@ -116,7 +116,6 @@ export async function list(nav, query) {
   return pageShell({
     title: '日记', sub: 'Journals', stats,
     actions: [
-      h('button', { class: 'icon-btn plus', onclick: () => nav('#/journals/new'), 'aria-label': '新建日记' }, '＋'),
       ...(searchBtn ? [searchBtn] : []),
       toggleBtn
     ],

@@ -15,6 +15,16 @@ const MODULES = { flow, journals: journal, memos: memo, books: books, movies: mo
 const TABS = ['flow', 'journals', 'memos', 'books', 'movies'];
 
 const viewEl = document.getElementById('view');
+
+/* ══ FAB（悬浮新建按钮：仅数据类 tab 列表页显示，Flow/详情/编辑页隐藏）══ */
+const FAB_TABS = ['journals', 'memos', 'books', 'movies'];
+const fab = document.createElement('button');
+fab.className = 'fab';
+fab.setAttribute('aria-label', '新建');
+fab.textContent = '＋';
+fab.style.display = 'none';
+document.getElementById('app').appendChild(fab);
+
 let renderToken = 0;          // 防止并发渲染互相覆盖（最新一次获胜）
 let lastHash = null, lastTs = 0;  // 去重：popstate+hashchange 双触发只渲染一次
 
@@ -88,6 +98,13 @@ async function render(force = false) {
 
   const { tab, mode, id, query } = parse();
   document.body.classList.toggle('editing', mode === 'edit');
+
+  /* FAB：仅数据类 tab 的列表页显示，点击跳转该 tab 的 new 页 */
+  const showFab = mode === 'list' && FAB_TABS.includes(tab);
+  fab.style.display = showFab ? '' : 'none';
+  fab.onclick = showFab ? () => nav('#/' + tab + '/new') : null;
+  fab.setAttribute('aria-label', '新建' + ({ journals: '日记', memos: '备忘', books: '书籍', movies: '影视' }[tab] || ''));
+  document.body.classList.toggle('has-fab', showFab);
   TABS.forEach(t => {
     const el = document.querySelector(`.tab[data-tab="${t}"]`);
     if (el) el.classList.toggle('on', t === tab);
