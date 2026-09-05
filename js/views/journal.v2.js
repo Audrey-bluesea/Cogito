@@ -264,6 +264,39 @@ function card(r, nav, q) {
   });
 }
 
+/* 详情页横向滑动翻页：左滑→下一天(更晚)，右滑→上一天(更早) */
+function attachDaySwipe(scrollEl, contentEl, { onPrev, onNext }) {
+  const TH = 48;                                  // 触发阈值(px)
+  let dragging = false, decided = false, horiz = false, pid = null, startX = 0, startY = 0, curX = 0;
+  scrollEl.style.touchAction = 'pan-y';           // 纵向交给原生滚动，横向由我们处理
+  const onDown = (x, y, id) => { pid = id; startX = x; startY = y; dragging = true; decided = false; horiz = false; curX = 0; contentEl.style.transition = ''; };
+  const onMove = (x, y, e) => {
+    if (!dragging) return;
+    const mx = x - startX, my = y - startY;
+    if (!decided) {
+      if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) > Math.abs(my); }
+      else return;
+    }
+    if (!horiz) { dragging = false; return; }      // 纵向 → 交还页面滚动
+    if (e && e.cancelable) e.preventDefault();
+    curX = mx;
+    contentEl.style.transform = `translateX(${mx * 0.28}px)`;
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    contentEl.style.transition = 'transform .2s ease';
+    contentEl.style.transform = '';
+    if (decided && horiz && Math.abs(curX) > TH) {
+      if (curX < 0) onNext(); else onPrev();        // 左滑(curX<0)→下一天；右滑→上一天
+    }
+  };
+  scrollEl.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.pointerId));
+  scrollEl.addEventListener('pointermove', e => { if (e.pointerId !== pid) return; onMove(e.clientX, e.clientY, e); });
+  scrollEl.addEventListener('pointerup', e => { if (e.pointerId !== pid) return; onUp(e); });
+  scrollEl.addEventListener('pointercancel', () => { dragging = false; contentEl.style.transition = ''; contentEl.style.transform = ''; });
+}
+
 /* ---------- 只读详情页 ---------- */
 export async function detail(id, nav, query) {
   const r = await db.get(STORE, id);
@@ -307,13 +340,27 @@ export async function detail(id, nav, query) {
         )
       : null
   );
-  return detailShell({
+  const page = detailShell({
     title: '日记', onBack: back,
     actions: [
       h('button', { class: 'icon-btn', onclick: () => nav('#/journals/' + id), 'aria-label': '编辑' }, icon('pencil'))
     ],
     content
   });
+  /* 相邻日记：按日期排序，跳过没有日记的日期；左滑去更晚、右滑去更早 */
+  const all = (await db.all(STORE)).filter(r0 => r0.date).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const idx = all.findIndex(r0 => r0.id === id);
+  const prevEntry = idx > 0 ? all[idx - 1] : null;
+  const nextEntry = (idx >= 0 && idx < all.length - 1) ? all[idx + 1] : null;
+  const scrollEl = page.querySelector('.scroll');
+  const detailEl = page.querySelector('.detail');
+  if (scrollEl && detailEl) {
+    attachDaySwipe(scrollEl, detailEl, {
+      onPrev: () => prevEntry ? nav('#/journals/d/' + prevEntry.id, true) : toast('已经是最早的一篇啦'),
+      onNext: () => nextEntry ? nav('#/journals/d/' + nextEntry.id, true) : toast('已经是最后一篇啦')
+    });
+  }
+  return page;
 }
 
 /* ---------- 编辑 / 新建页 ---------- */
