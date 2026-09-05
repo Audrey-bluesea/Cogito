@@ -266,7 +266,7 @@ function card(r, nav, q) {
 
 /* 详情页横向滑动翻页：左滑→下一天(更晚)，右滑→上一天(更早)
    卡片跟手 + 渐隐；越过阈值整张滑出屏幕，新页面从反方向滑入 */
-function attachDaySwipe(scrollEl, contentEl, { onPrev, onNext }) {
+function attachDaySwipe(scrollEl, contentEl, { hasPrev, hasNext, onPrev, onNext }) {
   const TH = 48;                                  // 触发阈值(px)
   const FOLLOW = 0.36;                            // 跟手系数（越小越「阻尼」）
   let dragging = false, decided = false, horiz = false, pid = null, startX = 0, startY = 0, curX = 0;
@@ -291,13 +291,22 @@ function attachDaySwipe(scrollEl, contentEl, { onPrev, onNext }) {
     dragging = false;
     if (decided && horiz && Math.abs(curX) > TH) {
       const goNext = curX < 0;                    // 左滑(curX<0)→下一天；右滑→上一天
-      contentEl.style.transition = 'transform .26s cubic-bezier(.22,.61,.36,1), opacity .26s ease';
-      contentEl.style.transform = `translateX(${goNext ? '-110%' : '110%'})`;
-      contentEl.style.opacity = '0';
-      let fired = false;
-      const fire = () => { if (fired) return; fired = true; (goNext ? onNext : onPrev)(); };
-      contentEl.addEventListener('transitionend', fire, { once: true });
-      setTimeout(fire, 320);                      // 兜底：transitionend 万一没触发也跳转
+      const hasTarget = goNext ? hasNext : hasPrev;
+      if (hasTarget) {
+        contentEl.style.transition = 'transform .26s cubic-bezier(.22,.61,.36,1), opacity .26s ease';
+        contentEl.style.transform = `translateX(${goNext ? '-110%' : '110%'})`;
+        contentEl.style.opacity = '0';
+        let fired = false;
+        const fire = () => { if (fired) return; fired = true; (goNext ? onNext : onPrev)(); };
+        contentEl.addEventListener('transitionend', fire, { once: true });
+        setTimeout(fire, 320);                    // 兜底：transitionend 万一没触发也跳转
+      } else {
+        // 边界（最早/最晚一篇）：不滑走，回弹 + 提示，避免变成空白页
+        contentEl.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1), opacity .22s ease';
+        contentEl.style.transform = '';
+        contentEl.style.opacity = '1';
+        (goNext ? onNext : onPrev)();             // 仅触发 toast，不翻页
+      }
     } else {
       contentEl.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1), opacity .22s ease';
       contentEl.style.transform = '';
@@ -381,6 +390,8 @@ export async function detail(id, nav, query) {
       }));
     }
     attachDaySwipe(scrollEl, detailEl, {
+      hasPrev: !!prevEntry,
+      hasNext: !!nextEntry,
       onPrev: () => prevEntry ? nav('#/journals/d/' + prevEntry.id + '?sw=prev', true) : toast('已经是最早的一篇啦'),
       onNext: () => nextEntry ? nav('#/journals/d/' + nextEntry.id + '?sw=next', true) : toast('已经是最后一篇啦')
     });
