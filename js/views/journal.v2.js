@@ -3,7 +3,7 @@ import { db } from '../db.v2.js';
 import {
   h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select,
   emojiPicker, imagePicker, swipeRow, confirmSheet, toast, todayISO, weekdayCN, dayOf, monOf, fmtDate,
-  richBody, mentionSource, stripBody, renderBody, truncate, globalSearchRow, nowLocalDT, journalAmbiance
+  radioGroup, richBody, mentionSource, stripBody, renderBody, truncate, globalSearchRow, nowLocalDT, journalAmbiance
 } from '../ui.v2.js';
 import { WEATHER_OPTIONS, DEFAULT_WEATHER } from '../weather.v2.js';
 
@@ -176,7 +176,8 @@ async function monthView(rows, nav) {
       const hasEntry = !!entry;
 
       const cell = h('div', {
-        class: 'cal-cell' + (isToday ? ' today' : '') + (hasEntry ? ' has-entry' : ''),
+        class: 'cal-cell' + (isToday ? ' today' : '') + (hasEntry ? ' has-entry' : '')
+             + (entry?.period === '有' ? ' period' : ''),
         onclick: () => {
           if (entry) nav('#/journals/d/' + entry.id);
           else nav('#/journals/new?date=' + ds);
@@ -347,6 +348,8 @@ export async function edit(id, nav, query) {
   const mood = emojiPicker(MOODS, rec?.mood || '😊');
   const kwIn = input({ placeholder: '', value: (rec?.keywords || []).join('，') });
   const illus = imagePicker(rec?.illustration || '', 'image');
+  /* 生理期：一个月就几天，收进「更多选项」，不常驻表单 */
+  const period = radioGroup(['无', '有'], rec?.period === '有' ? '有' : '无');
   const breakIn = input({ placeholder: '早餐', value: rec?.breakfast || '' });
   const lunchIn = input({ placeholder: '午餐', value: rec?.lunch || '' });
   const dinnerIn = input({ placeholder: '晚餐', value: rec?.dinner || '' });
@@ -386,6 +389,7 @@ export async function edit(id, nav, query) {
     // 其余属性折叠进「更多」
     h('details', { class: 'more' },
       h('summary', {}, '更多选项'),
+      field('生理期', period.el),
       field('关键字', kwIn),
       field('插图', illus.el)
     )
@@ -408,6 +412,7 @@ export async function edit(id, nav, query) {
       breakfast: breakIn.value.trim(),
       lunch: lunchIn.value.trim(),
       dinner: dinnerIn.value.trim(),
+      period: period.get(),
       content: html
     });
     toast('已保存 ✨');
