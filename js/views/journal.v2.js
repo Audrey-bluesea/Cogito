@@ -264,11 +264,14 @@ function card(r, nav, q) {
   });
 }
 
-/* 详情页横向滑动翻页：左滑→下一天(更晚)，右滑→上一天(更早) */
+/* 详情页横向滑动翻页：左滑→下一天(更晚)，右滑→上一天(更早)
+   卡片跟手 + 渐隐；越过阈值整张滑出屏幕，新页面从反方向滑入 */
 function attachDaySwipe(scrollEl, contentEl, { onPrev, onNext }) {
   const TH = 48;                                  // 触发阈值(px)
+  const FOLLOW = 0.36;                            // 跟手系数（越小越「阻尼」）
   let dragging = false, decided = false, horiz = false, pid = null, startX = 0, startY = 0, curX = 0;
   scrollEl.style.touchAction = 'pan-y';           // 纵向交给原生滚动，横向由我们处理
+  const clearStyle = () => { contentEl.style.transition = ''; contentEl.style.transform = ''; contentEl.style.opacity = ''; };
   const onDown = (x, y, id) => { pid = id; startX = x; startY = y; dragging = true; decided = false; horiz = false; curX = 0; contentEl.style.transition = ''; };
   const onMove = (x, y, e) => {
     if (!dragging) return;
@@ -280,21 +283,31 @@ function attachDaySwipe(scrollEl, contentEl, { onPrev, onNext }) {
     if (!horiz) { dragging = false; return; }      // 纵向 → 交还页面滚动
     if (e && e.cancelable) e.preventDefault();
     curX = mx;
-    contentEl.style.transform = `translateX(${mx * 0.28}px)`;
+    contentEl.style.transform = `translateX(${mx * FOLLOW}px)`;
+    contentEl.style.opacity = String(Math.max(0.4, 1 - Math.abs(mx) / 620));  // 拖得越远越淡，给"放手就飞走"暗示
   };
   const onUp = () => {
     if (!dragging) return;
     dragging = false;
-    contentEl.style.transition = 'transform .2s ease';
-    contentEl.style.transform = '';
     if (decided && horiz && Math.abs(curX) > TH) {
-      if (curX < 0) onNext(); else onPrev();        // 左滑(curX<0)→下一天；右滑→上一天
+      const goNext = curX < 0;                    // 左滑(curX<0)→下一天；右滑→上一天
+      contentEl.style.transition = 'transform .26s cubic-bezier(.22,.61,.36,1), opacity .26s ease';
+      contentEl.style.transform = `translateX(${goNext ? '-110%' : '110%'})`;
+      contentEl.style.opacity = '0';
+      let fired = false;
+      const fire = () => { if (fired) return; fired = true; (goNext ? onNext : onPrev)(); };
+      contentEl.addEventListener('transitionend', fire, { once: true });
+      setTimeout(fire, 320);                      // 兜底：transitionend 万一没触发也跳转
+    } else {
+      contentEl.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1), opacity .22s ease';
+      contentEl.style.transform = '';
+      contentEl.style.opacity = '1';
     }
   };
   scrollEl.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.pointerId));
   scrollEl.addEventListener('pointermove', e => { if (e.pointerId !== pid) return; onMove(e.clientX, e.clientY, e); });
   scrollEl.addEventListener('pointerup', e => { if (e.pointerId !== pid) return; onUp(e); });
-  scrollEl.addEventListener('pointercancel', () => { dragging = false; contentEl.style.transition = ''; contentEl.style.transform = ''; });
+  scrollEl.addEventListener('pointercancel', () => { dragging = false; clearStyle(); });
 }
 
 /* ---------- 只读详情页 ---------- */
@@ -352,12 +365,24 @@ export async function detail(id, nav, query) {
   const idx = all.findIndex(r0 => r0.id === id);
   const prevEntry = idx > 0 ? all[idx - 1] : null;
   const nextEntry = (idx >= 0 && idx < all.length - 1) ? all[idx + 1] : null;
+  const sw = (query && query.get) ? (query.get('sw') || '') : '';   // 来自滑动翻页 → 新页面从反方向滑入
   const scrollEl = page.querySelector('.scroll');
   const detailEl = page.querySelector('.detail');
   if (scrollEl && detailEl) {
+    if (sw === 'next' || sw === 'prev') {
+      const fromX = sw === 'next' ? '100%' : '-100%';               // next:左滑去更晚→新页从右进；prev:右滑去更早→从后进
+      detailEl.style.transition = 'none';
+      detailEl.style.transform = `translateX(${fromX})`;
+      detailEl.style.opacity = '0';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        detailEl.style.transition = 'transform .28s cubic-bezier(.22,.61,.36,1), opacity .28s ease';
+        detailEl.style.transform = 'translateX(0)';
+        detailEl.style.opacity = '1';
+      }));
+    }
     attachDaySwipe(scrollEl, detailEl, {
-      onPrev: () => prevEntry ? nav('#/journals/d/' + prevEntry.id, true) : toast('已经是最早的一篇啦'),
-      onNext: () => nextEntry ? nav('#/journals/d/' + nextEntry.id, true) : toast('已经是最后一篇啦')
+      onPrev: () => prevEntry ? nav('#/journals/d/' + prevEntry.id + '?sw=prev', true) : toast('已经是最早的一篇啦'),
+      onNext: () => nextEntry ? nav('#/journals/d/' + nextEntry.id + '?sw=next', true) : toast('已经是最后一篇啦')
     });
   }
   return page;
@@ -395,7 +420,7 @@ export async function edit(id, nav, query) {
   const mood = emojiPicker(MOODS, rec?.mood || '😊');
   const kwIn = input({ placeholder: '', value: (rec?.keywords || []).join('，') });
   const illus = imagePicker(rec?.illustration || '', 'image');
-  /* 生理期：一个月就几天，收进「更多选项」，不常驻表单 */
+  /* 月经：一个月就几天，收进「更多选项」，不常驻表单 */
   const period = radioGroup(['无', '有'], rec?.period === '有' ? '有' : '无');
   const breakIn = input({ placeholder: '早餐', value: rec?.breakfast || '' });
   const lunchIn = input({ placeholder: '午餐', value: rec?.lunch || '' });
@@ -436,7 +461,7 @@ export async function edit(id, nav, query) {
     // 其余属性折叠进「更多」
     h('details', { class: 'more' },
       h('summary', {}, '更多选项'),
-      field('生理期', period.el),
+      field('月经', period.el),
       field('关键字', kwIn),
       field('插图', illus.el)
     )
