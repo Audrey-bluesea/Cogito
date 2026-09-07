@@ -268,8 +268,9 @@ function card(r, nav, q) {
    卡片跟手 + 渐隐；越过阈值整张滑出屏幕，新页面从反方向滑入 */
 function attachDaySwipe(scrollEl, contentEl, { hasPrev, hasNext, onPrev, onNext }) {
   const TH = 48;                                  // 触发阈值(px)
-  const FOLLOW = 0.36;                            // 跟手系数（越小越「阻尼」）
-  let dragging = false, decided = false, horiz = false, pid = null, startX = 0, startY = 0, curX = 0;
+  const FOLLOW = 1;                               // 跟手系数：1 = 完全跟手
+  const DECIDE = 8;                               // 方向判定距离(px)
+  let dragging = false, decided = false, horiz = false, pid = null, startX = 0, startY = 0, curX = 0, lockedTop = 0;
   scrollEl.style.touchAction = 'pan-y';           // 纵向交给原生滚动，横向由我们处理
   const clearStyle = () => { contentEl.style.transition = ''; contentEl.style.transform = ''; contentEl.style.opacity = ''; };
   const onDown = (x, y, id) => { pid = id; startX = x; startY = y; dragging = true; decided = false; horiz = false; curX = 0; contentEl.style.transition = ''; };
@@ -277,10 +278,14 @@ function attachDaySwipe(scrollEl, contentEl, { hasPrev, hasNext, onPrev, onNext 
     if (!dragging) return;
     const mx = x - startX, my = y - startY;
     if (!decided) {
-      if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) > Math.abs(my); }
-      else return;
+      if (Math.hypot(mx, my) < DECIDE) return;
+      // 偏向横向：约 50° 以内的斜滑都认作横滑，避免被系统吞成竖向滚动
+      horiz = Math.abs(mx) >= Math.abs(my) * 0.85;
+      decided = true;
+      lockedTop = scrollEl.scrollTop;              // 记住当前纵向位置，横滑期间钉住它
     }
     if (!horiz) { dragging = false; return; }      // 纵向 → 交还页面滚动
+    if (scrollEl.scrollTop !== lockedTop) scrollEl.scrollTop = lockedTop;   // 横滑期间禁止上下漂
     if (e && e.cancelable) e.preventDefault();
     curX = mx;
     contentEl.style.transform = `translateX(${mx * FOLLOW}px)`;
@@ -315,6 +320,12 @@ function attachDaySwipe(scrollEl, contentEl, { hasPrev, hasNext, onPrev, onNext 
   };
   scrollEl.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.pointerId));
   scrollEl.addEventListener('pointermove', e => { if (e.pointerId !== pid) return; onMove(e.clientX, e.clientY, e); });
+  // 触屏上 pointermove 的 preventDefault 拦不住原生滚动，必须用非 passive 的 touchmove 才能拦住
+  scrollEl.addEventListener('touchmove', e => {
+    if (!dragging || !horiz) return;               // 未判定为横滑 → 不拦，纵向照常滚动
+    if (e.cancelable) e.preventDefault();         // 阻止系统把横滑误判成竖向滚动
+    if (scrollEl.scrollTop !== lockedTop) scrollEl.scrollTop = lockedTop;
+  }, { passive: false });
   scrollEl.addEventListener('pointerup', e => { if (e.pointerId !== pid) return; onUp(e); });
   scrollEl.addEventListener('pointercancel', () => { dragging = false; clearStyle(); });
 }
