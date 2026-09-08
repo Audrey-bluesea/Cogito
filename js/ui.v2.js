@@ -599,12 +599,6 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   bar.appendChild(colorBtn('🎨', 'fore', '文字颜色'));
   bar.appendChild(colorBtn('🖍', 'hilite', '高亮'));
   bar.appendChild(tool('⌫', 'removeFormat', null, '清除格式'));
-  bar.appendChild(h('span', { class: 'rte-sp' }));
-  bar.appendChild(h('button', {
-    type: 'button', class: 'rte-tool rte-done', title: '收起键盘',
-    onmousedown: (e) => e.preventDefault(),
-    onclick: () => { try { editor.blur(); } catch (e) {} }
-  }, '收起'));
 
   const wrap = h('div', { class: 'rte-wrap' }, bar, editor, pop);
 

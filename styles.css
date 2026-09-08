@@ -1317,8 +1317,6 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
   box-shadow: 0 6px 22px rgba(var(--sh), .18);
   max-height: 38vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
-.rte-sp { flex: 1 1 auto; }
-.rte-done { color: var(--accent-d); border-color: var(--accent); font-size: .72rem; padding: 0 .55rem; }
 .rte-tool:active { transform: scale(.93); }
 .rte-pop {
   position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 60;
