@@ -239,7 +239,7 @@ function card(r, nav, q) {
       ),
       h('div', { class: 'grow' },
         h('div', { class: 'row between' },
-          h('span', { class: 'jr-meta' }, `${weekdayCN(r.date)} · ${r.weather || ''} ${tempLabel(r)}`),
+          h('span', { class: 'jr-meta' }, `${weekdayCN(r.date)} · ${r.weather || ''} ${tempLabel(r)}`, r.period === '有' ? h('span', { class: 'jr-period' }, '♥️') : null),
           h('span', { style: { fontSize: '1.15rem' } }, r.mood || '😊')
         ),
         h('p', { class: 'card-body' + (excerpt ? '' : ' ambiance-text'), style: { marginTop: '.3rem' } }, excerpt || journalAmbiance(r)),

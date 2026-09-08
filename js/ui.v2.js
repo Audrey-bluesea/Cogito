@@ -611,10 +611,13 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   /* ── 键盘跟随：工具条悬浮到输入法正上方 + 光标始终可见 ──
      iOS 没有原生「输入法上方工具条」接口，只能用 visualViewport 推断：
      键盘弹出 → 可视高度变小，被键盘遮住的高度 = innerHeight - (vv.height + vv.offsetTop)。
-     position:fixed 与 getBoundingClientRect 同一坐标系（布局视口），可直接混用。 */
+     position:fixed 与 getBoundingClientRect 同一坐标系（布局视口），可直接混用。
+     EXTRA_BOTTOM 预留 iOS 键盘顶部「完成/Done」附件栏高度，避免工具条被系统按钮遮挡。 */
   const ph = h('div', { class: 'rte-bar-ph' });
   wrap.insertBefore(ph, bar);
   let floating = false;
+  const EXTRA_BOTTOM = 50;                         // 工具条底边距离键盘顶沿的净空
+  const getScrollEl = () => editor.closest ? editor.closest('.scroll') : null;
   const kbInset = () => {
     const vv = window.visualViewport;
     if (!vv) return 0;
@@ -624,12 +627,13 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     const r = editor.getBoundingClientRect();
     bar.style.width = Math.max(160, Math.round(r.width)) + 'px';
     bar.style.left = Math.round(r.left) + 'px';
-    bar.style.bottom = (kbInset() + 6) + 'px';
+    bar.style.bottom = (kbInset() + EXTRA_BOTTOM) + 'px';
   };
   const resetPop = () => {
     if (pop.style.position !== 'fixed') return;
     pop.style.position = ''; pop.style.top = ''; pop.style.left = ''; pop.style.bottom = '';
   };
+  const floatPad = () => kbInset() + bar.offsetHeight + 24;
   const setFloat = (on) => {
     if (on === floating) { if (on) placeBar(); return; }
     floating = on;
@@ -638,12 +642,17 @@ export function richBody(initial = '', { withImage = true, mention = null, place
       ph.style.display = 'block';
       bar.classList.add('rte-bar-float');
       placeBar();
+      // 给 .scroll 追加底部内边距，保证最后一行能滚到工具条上方可见区
+      const scrollEl = getScrollEl();
+      if (scrollEl) scrollEl.style.paddingBottom = 'calc(var(--sa-bottom) + 5.5rem + ' + floatPad() + 'px)';
     } else {
       resetPop();
       ph.style.display = 'none';
       ph.style.height = '0px';
       bar.classList.remove('rte-bar-float');
       bar.style.position = ''; bar.style.left = ''; bar.style.bottom = ''; bar.style.width = '';
+      const scrollEl = getScrollEl();
+      if (scrollEl) scrollEl.style.paddingBottom = '';
     }
   };
   const syncFloat = () => { setFloat(kbInset() > 60 && document.activeElement === editor); };
@@ -673,9 +682,10 @@ export function richBody(initial = '', { withImage = true, mention = null, place
         }
       } catch (e) { rect = null; }
       if (!rect || !rect.height) return;
-      const barH = floating ? bar.offsetHeight + 10 : 0;
+      // 光标必须避开悬浮工具条占用区（含 iOS 附件栏净空）
+      const barH = floating ? bar.offsetHeight + EXTRA_BOTTOM + 12 : 0;
       const visTop = (vv.offsetTop || 0) + 8;
-      const visBottom = (vv.offsetTop || 0) + vv.height - barH - 10;
+      const visBottom = (vv.offsetTop || 0) + vv.height - barH - 8;
       let d = 0;
       if (rect.bottom > visBottom) d = rect.bottom - visBottom;
       else if (rect.top < visTop) d = rect.top - visTop;

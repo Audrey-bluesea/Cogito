@@ -1278,6 +1278,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 
 /* ═══════ 详情页信息块（封面旁） ═══════ */
 .d-heart { margin-left: .3rem; font-size: .82em; vertical-align: .04em; }
+.jr-period { margin-left: .35rem; font-size: 1em; opacity: .85; vertical-align: .02em; }
 .d-info { margin-top: .35rem; }
 .d-info > .d-meta { margin-top: .2rem; }
 .d-info > .d-meta:first-child { margin-top: 0; }
