@@ -1277,6 +1277,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .d-info-col { flex: 1; min-width: 0; }
 
 /* ═══════ 详情页信息块（封面旁） ═══════ */
+.d-heart { margin-left: .3rem; font-size: .82em; vertical-align: .04em; }
 .d-info { margin-top: .35rem; }
 .d-info > .d-meta { margin-top: .2rem; }
 .d-info > .d-meta:first-child { margin-top: 0; }
@@ -1301,6 +1302,22 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .rte-tool.on { background: var(--tint); border-color: var(--accent); color: var(--accent-d); }
+/* 键盘弹出：工具条悬浮到输入法正上方（richBody 里按 visualViewport 计算并加此类） */
+.rte-bar-ph { display: none; }
+.rte-bar-float {
+  position: fixed; z-index: 60;
+  box-sizing: border-box;
+  padding: .4rem .45rem !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 6px 22px rgba(var(--sh), .18);
+  max-height: 38vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.rte-sp { flex: 1 1 auto; }
+.rte-done { color: var(--accent-d); border-color: var(--accent); font-size: .72rem; padding: 0 .55rem; }
 .rte-tool:active { transform: scale(.93); }
 .rte-pop {
   position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 60;

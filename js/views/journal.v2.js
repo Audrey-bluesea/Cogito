@@ -350,7 +350,8 @@ export async function detail(id, nav, query) {
     h('div', { class: 'd-head' },
       h('span', { class: 'd-emoji' }, r.mood || '😊'),
       h('div', {},
-        h('div', { class: 'd-title d-subdate' }, fmtDate(r.date)),
+        h('div', { class: 'd-title d-subdate' }, fmtDate(r.date),
+          r.period === '有' ? h('span', { class: 'd-heart', title: '月经' }, '♥️') : null),
         meta ? h('div', { class: 'd-meta' }, meta) : null
       )
     ),

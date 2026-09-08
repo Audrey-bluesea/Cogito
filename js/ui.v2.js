@@ -534,7 +534,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     } catch (e) {}
     refreshStates();
   };
-  const closePop = () => { pop.style.display = 'none'; document.removeEventListener('mousedown', outside, true); };
+  const closePop = () => { pop.style.display = 'none'; resetPop(); document.removeEventListener('mousedown', outside, true); };
   const outside = (e) => {
     if (!pop.contains(e.target) && !(e.target.closest && e.target.closest('.rte-tool-color'))) {
       pop.style.display = 'none';
@@ -567,6 +567,13 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     popMode = mode; buildPop();
     savedRange = saveRange();
     pop.style.display = 'block';
+    if (floating) {                                  // 工具条悬浮时，弹层跟着钉在它上方，别掉到键盘后面
+      const br = bar.getBoundingClientRect();
+      pop.style.position = 'fixed';
+      pop.style.top = 'auto';
+      pop.style.left = Math.max(8, Math.round(br.left)) + 'px';
+      pop.style.bottom = Math.max(8, Math.round(window.innerHeight - br.top + 8)) + 'px';
+    }
     setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
   };
   const colorBtn = (label, mode, title) => h('button', {
@@ -592,8 +599,111 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   bar.appendChild(colorBtn('🎨', 'fore', '文字颜色'));
   bar.appendChild(colorBtn('🖍', 'hilite', '高亮'));
   bar.appendChild(tool('⌫', 'removeFormat', null, '清除格式'));
+  bar.appendChild(h('span', { class: 'rte-sp' }));
+  bar.appendChild(h('button', {
+    type: 'button', class: 'rte-tool rte-done', title: '收起键盘',
+    onmousedown: (e) => e.preventDefault(),
+    onclick: () => { try { editor.blur(); } catch (e) {} }
+  }, '收起'));
 
   const wrap = h('div', { class: 'rte-wrap' }, bar, editor, pop);
+
+  /* ── 键盘跟随：工具条悬浮到输入法正上方 + 光标始终可见 ──
+     iOS 没有原生「输入法上方工具条」接口，只能用 visualViewport 推断：
+     键盘弹出 → 可视高度变小，被键盘遮住的高度 = innerHeight - (vv.height + vv.offsetTop)。
+     position:fixed 与 getBoundingClientRect 同一坐标系（布局视口），可直接混用。 */
+  const ph = h('div', { class: 'rte-bar-ph' });
+  wrap.insertBefore(ph, bar);
+  let floating = false;
+  const kbInset = () => {
+    const vv = window.visualViewport;
+    if (!vv) return 0;
+    return Math.max(0, Math.round(window.innerHeight - (vv.height + (vv.offsetTop || 0))));
+  };
+  const placeBar = () => {
+    const r = editor.getBoundingClientRect();
+    bar.style.width = Math.max(160, Math.round(r.width)) + 'px';
+    bar.style.left = Math.round(r.left) + 'px';
+    bar.style.bottom = (kbInset() + 6) + 'px';
+  };
+  const resetPop = () => {
+    if (pop.style.position !== 'fixed') return;
+    pop.style.position = ''; pop.style.top = ''; pop.style.left = ''; pop.style.bottom = '';
+  };
+  const setFloat = (on) => {
+    if (on === floating) { if (on) placeBar(); return; }
+    floating = on;
+    if (on) {
+      ph.style.height = bar.offsetHeight + 'px';
+      ph.style.display = 'block';
+      bar.classList.add('rte-bar-float');
+      placeBar();
+    } else {
+      resetPop();
+      ph.style.display = 'none';
+      ph.style.height = '0px';
+      bar.classList.remove('rte-bar-float');
+      bar.style.position = ''; bar.style.left = ''; bar.style.bottom = ''; bar.style.width = '';
+    }
+  };
+  const syncFloat = () => { setFloat(kbInset() > 60 && document.activeElement === editor); };
+  /* 光标可见：把光标滚进「工具条上方」的可见区内 */
+  let caretRaf = 0;
+  const ensureCaret = () => {
+    if (caretRaf) return;
+    caretRaf = requestAnimationFrame(() => {
+      caretRaf = 0;
+      if (document.activeElement !== editor) return;
+      const vv = window.visualViewport;
+      const scrollEl = editor.closest ? editor.closest('.scroll') : null;
+      if (!vv || !scrollEl) return;
+      let rect = null;
+      try {
+        const s = window.getSelection();
+        if (s && s.rangeCount) {
+          const rg = s.getRangeAt(0).cloneRange();
+          rect = rg.getBoundingClientRect();
+          if (!rect || (rect.top === 0 && rect.bottom === 0)) {   // 折叠光标某些内核返回全 0 → 插临时标记量一次
+            const marker = document.createElement('span');
+            marker.textContent = '\u200b';
+            rg.insertNode(marker);
+            rect = marker.getBoundingClientRect();
+            marker.parentNode.removeChild(marker);
+          }
+        }
+      } catch (e) { rect = null; }
+      if (!rect || !rect.height) return;
+      const barH = floating ? bar.offsetHeight + 10 : 0;
+      const visTop = (vv.offsetTop || 0) + 8;
+      const visBottom = (vv.offsetTop || 0) + vv.height - barH - 10;
+      let d = 0;
+      if (rect.bottom > visBottom) d = rect.bottom - visBottom;
+      else if (rect.top < visTop) d = rect.top - visTop;
+      if (Math.abs(d) > 1) scrollEl.scrollTop += d;
+    });
+  };
+  let detach = () => {};
+  try {
+    const vv = window.visualViewport;
+    const onVV = () => { if (!editor.isConnected) { detach(); return; } syncFloat(); ensureCaret(); };
+    detach = () => {
+      if (vv) { vv.removeEventListener('resize', onVV); vv.removeEventListener('scroll', onVV); }
+      window.removeEventListener('resize', onVV);
+      window.removeEventListener('orientationchange', onVV);
+    };
+    if (vv) { vv.addEventListener('resize', onVV); vv.addEventListener('scroll', onVV); }
+    window.addEventListener('resize', onVV);
+    window.addEventListener('orientationchange', onVV);
+  } catch (e) {}
+  /* 聚焦后等键盘动画长出来再悬浮（键盘高度要它真的长出来才测得准） */
+  editor.addEventListener('focus', () => {
+    [80, 220, 380, 600].forEach(ms => setTimeout(() => { syncFloat(); ensureCaret(); }, ms));
+  });
+  editor.addEventListener('blur', () => setTimeout(() => {
+    if (document.activeElement !== editor) setFloat(false);
+  }, 120));
+  editor.addEventListener('input', ensureCaret);
+  editor.addEventListener('keyup', ensureCaret);
   if (mention) attachMention(editor, mention);
   return {
     el: wrap,
