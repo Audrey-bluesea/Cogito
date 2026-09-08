@@ -1277,7 +1277,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .d-info-col { flex: 1; min-width: 0; }
 
 /* ═══════ 详情页信息块（封面旁） ═══════ */
-.d-heart { margin-left: .3rem; font-size: .82em; vertical-align: .04em; }
+.d-heart { margin-left: .45rem; font-size: 1em; vertical-align: .08em; }
 .jr-period { margin-left: .35rem; font-size: 1em; opacity: .85; vertical-align: .02em; }
 .d-info { margin-top: .35rem; }
 .d-info > .d-meta { margin-top: .2rem; }

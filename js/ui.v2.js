@@ -610,7 +610,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   const ph = h('div', { class: 'rte-bar-ph' });
   wrap.insertBefore(ph, bar);
   let floating = false;
-  const EXTRA_BOTTOM = 50;                         // 工具条底边距离键盘顶沿的净空
+  const EXTRA_BOTTOM = 10;                         // 工具条底边距离键盘顶沿的净空
   const getScrollEl = () => editor.closest ? editor.closest('.scroll') : null;
   const kbInset = () => {
     const vv = window.visualViewport;
