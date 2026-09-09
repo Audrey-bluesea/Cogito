@@ -1306,7 +1306,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 /* 键盘弹出：工具条悬浮到输入法正上方（richBody 里按 visualViewport 计算并加此类） */
 .rte-bar-ph { display: none; }
 .rte-bar-float {
-  position: fixed; z-index: 60;
+  position: fixed; z-index: 200; margin: 0;
   box-sizing: border-box;
   padding: .4rem .45rem !important;
   border: 1px solid var(--border) !important;
@@ -1319,7 +1319,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 }
 .rte-tool:active { transform: scale(.93); }
 .rte-pop {
-  position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 60;
+  position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 210;
   background: var(--card); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: .6rem; max-width: 280px;
   max-height: 45vh; overflow-y: auto; -webkit-overflow-scrolling: touch;

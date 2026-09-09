@@ -602,54 +602,109 @@ export function richBody(initial = '', { withImage = true, mention = null, place
 
   const wrap = h('div', { class: 'rte-wrap' }, bar, editor, pop);
 
-  /* ── 键盘跟随：工具条悬浮到输入法正上方 + 光标始终可见 ──
-     iOS 没有原生「输入法上方工具条」接口，只能用 visualViewport 推断：
-     键盘弹出 → 可视高度变小，被键盘遮住的高度 = innerHeight - (vv.height + vv.offsetTop)。
-     position:fixed 与 getBoundingClientRect 同一坐标系（布局视口），可直接混用。
-     EXTRA_BOTTOM 预留 iOS 键盘顶部「完成/Done」附件栏高度，避免工具条被系统按钮遮挡。 */
+  /* ── 键盘跟随：工具条稳定悬浮在键盘正上方 ──
+     之前「时好时坏」的三个根因，这里全部修掉：
+     ① 工具条原本留在 .rte-wrap 里，若祖先带 transform/filter/contain，
+        position:fixed 会以祖先为参照系 → 位置飘忽、甚至整条飞出屏幕（「完全找不见了」）。
+        → 悬浮时把工具条挂到 document.body，彻底脱离祖先影响。
+     ② 键盘高度是「动画长出来的」，只在 focus 后测一两次几乎必然拿到中间值 →
+        位置算低了就被 Done 栏/键盘挡住。→ 悬浮期间用 rAF 每帧校正，测多少都不怕。
+     ③ 判定条件 kbInset>60 太硬：动画刚开始时高度不够 → 直接取消悬浮且不再触发 → 消失。
+        → 改成滞后判定：只要还聚焦就保持悬浮，键盘真的收起（inset<24）才归位。
+     ④ bottom 做了上下钳制，任何异常数值都不会让工具条跑出可视区。 */
   const ph = h('div', { class: 'rte-bar-ph' });
   wrap.insertBefore(ph, bar);
   let floating = false;
-  const EXTRA_BOTTOM = 10;                         // 工具条底边距离键盘顶沿的净空
-  const getScrollEl = () => editor.closest ? editor.closest('.scroll') : null;
+  const EXTRA_BOTTOM = 12;                         // 工具条底边与键盘顶沿的净空
+  let baseVh = 0;                                  // 无键盘时的可视高度基线（随横竖屏/滚动自适应）
+  const getScrollEl = () => (editor.closest ? editor.closest('.scroll') : null);
   const kbInset = () => {
     const vv = window.visualViewport;
     if (!vv) return 0;
-    return Math.max(0, Math.round(window.innerHeight - (vv.height + (vv.offsetTop || 0))));
+    const cur = vv.height + (vv.offsetTop || 0);   // 可视区底边（布局视口坐标系）
+    const layoutH = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    if (cur > baseVh) baseVh = cur;                // 记录「没键盘」时的最大可视高度
+    return Math.max(0, Math.round(Math.max(baseVh, layoutH) - cur));  // 被键盘盖住的高度
   };
   const placeBar = () => {
+    const vv = window.visualViewport;
+    const vw = (vv && vv.width) || window.innerWidth;
+    const layoutH = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const bh = bar.offsetHeight || 40;
+    let bottom = kbInset() + EXTRA_BOTTOM;
+    /* 钳制参照「布局视口」而非可视区：bottom 是相对布局视口底边的距离，
+       用可视高度当上限会把工具条反而压到键盘后面（v111 之前时好时坏的元凶之一）。 */
+    const maxBottom = Math.max(8, layoutH - bh - 8);     // 顶边最多到屏幕顶 8px处
+    if (bottom > maxBottom) bottom = maxBottom;
+    if (bottom < 8) bottom = 8;                          // 底边不许低于屏幕底
     const r = editor.getBoundingClientRect();
-    bar.style.width = Math.max(160, Math.round(r.width)) + 'px';
-    bar.style.left = Math.round(r.left) + 'px';
-    bar.style.bottom = (kbInset() + EXTRA_BOTTOM) + 'px';
+    let w = Math.max(160, Math.round(r.width || (vw - 16)));
+    if (w > vw - 16) w = vw - 16;
+    let left = Math.round(r.left || 8);
+    if (left < 8) left = 8;
+    if (left + w > vw - 8) left = Math.max(8, vw - 8 - w);
+    bar.style.width = w + 'px';
+    bar.style.left = left + 'px';
+    bar.style.bottom = Math.round(bottom) + 'px';
   };
   const resetPop = () => {
-    if (pop.style.position !== 'fixed') return;
-    pop.style.position = ''; pop.style.top = ''; pop.style.left = ''; pop.style.bottom = '';
+    if (pop.style.position === 'fixed') {
+      pop.style.position = ''; pop.style.top = ''; pop.style.left = ''; pop.style.bottom = '';
+    }
+    if (pop.parentNode === document.body) wrap.appendChild(pop);   // 颜色弹层归位
   };
-  const floatPad = () => kbInset() + bar.offsetHeight + 24;
+  /* 悬浮期间每帧校正 + 同步底部留白（键盘动画期间数值一直在变） */
+  let tickId = 0, lastPad = -1;
+  const syncPad = () => {
+    const scrollEl = getScrollEl();
+    if (!scrollEl) return;
+    const v = Math.round(kbInset() + (bar.offsetHeight || 40) + 24);
+    if (Math.abs(v - lastPad) < 8) return;
+    lastPad = v;
+    scrollEl.style.paddingBottom = 'calc(var(--sa-bottom) + 5.5rem + ' + v + 'px)';
+  };
+  const tick = () => {
+    tickId = 0;
+    if (!floating) return;
+    if (!editor.isConnected) { setFloat(false); return; }
+    placeBar();
+    syncPad();
+    tickId = requestAnimationFrame(tick);
+  };
+  const startTick = () => { if (!tickId) tickId = requestAnimationFrame(tick); };
+  const stopTick = () => { if (tickId) { cancelAnimationFrame(tickId); tickId = 0; } };
   const setFloat = (on) => {
     if (on === floating) { if (on) placeBar(); return; }
     floating = on;
+    const scrollEl = getScrollEl();
     if (on) {
       ph.style.height = bar.offsetHeight + 'px';
       ph.style.display = 'block';
       bar.classList.add('rte-bar-float');
+      if (bar.parentNode !== document.body) document.body.appendChild(bar);   // ① 脱离祖先
+      if (pop.style.display === 'block' && pop.parentNode !== document.body) document.body.appendChild(pop);
       placeBar();
-      // 给 .scroll 追加底部内边距，保证最后一行能滚到工具条上方可见区
-      const scrollEl = getScrollEl();
-      if (scrollEl) scrollEl.style.paddingBottom = 'calc(var(--sa-bottom) + 5.5rem + ' + floatPad() + 'px)';
+      startTick();
+      syncPad();
     } else {
+      stopTick();
       resetPop();
       ph.style.display = 'none';
       ph.style.height = '0px';
       bar.classList.remove('rte-bar-float');
       bar.style.position = ''; bar.style.left = ''; bar.style.bottom = ''; bar.style.width = '';
-      const scrollEl = getScrollEl();
+      if (bar.parentNode === document.body && editor.parentNode) wrap.insertBefore(bar, editor);
+      lastPad = -1;
       if (scrollEl) scrollEl.style.paddingBottom = '';
     }
   };
-  const syncFloat = () => { setFloat(kbInset() > 60 && document.activeElement === editor); };
+  const isFocused = () => document.activeElement === editor;
+  const syncFloat = () => {
+    if (!editor.isConnected) { setFloat(false); return; }
+    if (isFocused() && kbInset() > 40) setFloat(true);        // ③ 键盘起来了才浮
+    else if (!isFocused() || kbInset() < 24) setFloat(false); // 键盘真收起 / 真失焦才归位
+    else if (floating) placeBar();                            // 动画中间值：保持悬浮并继续校正
+  };
   /* 光标可见：把光标滚进「工具条上方」的可见区内 */
   let caretRaf = 0;
   const ensureCaret = () => {
@@ -689,23 +744,32 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   let detach = () => {};
   try {
     const vv = window.visualViewport;
-    const onVV = () => { if (!editor.isConnected) { detach(); return; } syncFloat(); ensureCaret(); };
+    const onVV = () => {
+      if (!editor.isConnected) { detach(); return; }   // 视图已切换 → 收起并清理
+      syncFloat(); ensureCaret();
+    };
+    const onOrient = () => { baseVh = 0; onVV(); };
     detach = () => {
+      stopTick();
       if (vv) { vv.removeEventListener('resize', onVV); vv.removeEventListener('scroll', onVV); }
       window.removeEventListener('resize', onVV);
-      window.removeEventListener('orientationchange', onVV);
+      window.removeEventListener('orientationchange', onOrient);
+      // 悬浮时工具条/弹层挂在 body 上，页面卸载务必回收，避免残留孤儿节点
+      if (bar.parentNode === document.body) { try { bar.remove(); } catch (e) {} }
+      if (pop.parentNode === document.body) { try { pop.remove(); } catch (e) {} }
     };
     if (vv) { vv.addEventListener('resize', onVV); vv.addEventListener('scroll', onVV); }
     window.addEventListener('resize', onVV);
-    window.addEventListener('orientationchange', onVV);
+    window.addEventListener('orientationchange', onOrient);
   } catch (e) {}
-  /* 聚焦后等键盘动画长出来再悬浮（键盘高度要它真的长出来才测得准） */
+  /* 聚焦后多点采样：iOS 键盘是动画长出来的，单次测量几乎必错 */
   editor.addEventListener('focus', () => {
-    [80, 220, 380, 600].forEach(ms => setTimeout(() => { syncFloat(); ensureCaret(); }, ms));
+    [60, 120, 200, 320, 480, 700, 1000, 1500].forEach(ms =>
+      setTimeout(() => { syncFloat(); ensureCaret(); }, ms));
   });
   editor.addEventListener('blur', () => setTimeout(() => {
     if (document.activeElement !== editor) setFloat(false);
-  }, 120));
+  }, 150));
   editor.addEventListener('input', ensureCaret);
   editor.addEventListener('keyup', ensureCaret);
   if (mention) attachMention(editor, mention);
