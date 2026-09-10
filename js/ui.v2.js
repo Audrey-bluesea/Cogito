@@ -226,6 +226,18 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   };
 
   card.style.touchAction = 'pan-y';                       // 纵向仍可滚动，横向交给 JS
+  /* 触屏防抖：pointermove 里的 preventDefault() 拦不住原生滚动（iOS 只认 touchmove），
+     结果就是「上下左右一起抖」。判定为横滑后：① 非 passive 的 touchmove 里 preventDefault；
+     ② 把外层滚动容器的 scrollTop 钉住，双保险杜绝纵向漂移。未判定横滑时一律不拦，
+     保证纯上下滚动阅读照旧顺滑。 */
+  const swipeScrollEl = card.closest ? card.closest('.scroll') : null;
+  let lockedTop = 0;
+  card.addEventListener('touchstart', () => { lockedTop = swipeScrollEl ? swipeScrollEl.scrollTop : 0; }, { passive: true });
+  card.addEventListener('touchmove', (e) => {
+    if (!dragging || !decided || !horiz) return;          // 未判定为横滑 → 绝不拦，纵向照常滚
+    if (e.cancelable) e.preventDefault();
+    if (swipeScrollEl && swipeScrollEl.scrollTop !== lockedTop) swipeScrollEl.scrollTop = lockedTop;
+  }, { passive: false });
   card.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.pointerId));
   card.addEventListener('pointermove', e => { if (e.pointerId !== pid) return; onMove(e.clientX, e.clientY, e); });
   card.addEventListener('pointerup', e => { if (e.pointerId !== pid) return; onUp(e); });
@@ -736,13 +748,15 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     else if (!isFocused() || kbInset() < 24) setFloat(false); // 键盘真收起 / 真失焦才归位
     else if (floating) placeBar();                            // 动画中间值：保持悬浮并继续校正
   };
-  /* 光标可见：把光标钉在「悬浮工具条上方」
-     修复「打字/粘贴到最底部，文字藏在工具条后面，要自己往上拉」：
-     ① 上限不再用推算的 vv.height，而是直接取工具条真实顶边（fixed 元素 rect 就是布局视口坐标，最可靠）；
-     ② 悬浮期间由 rAF tick 每帧调用 → 换行、粘贴、插图后立刻归位，不用手动滚；
-     ③ 加 1.6s「编辑活跃窗口」：用户主动上滑回看时不会被强行拽回底部。 */
-  let caretRaf = 0, lastEditAt = 0;
+  /* 光标可见：只在「真被挡住」时才把光标拉回工具条上方
+     产品原则：**用户的滚动意图优先**。v113 每次点选/选词都触发校正，
+     导致「点上面的字想复制 → 整段被拽到最底下」，体验很糟。故 v114 收窄为三条：
+     ① 只在内容真的变了（输入/粘贴/插图）才校正；单纯点选、选词、移动光标绝不干预；
+     ② 只有整行都被工具条/键盘盖住（rect.top 已越过上限）才上移，露出一半时不抢；
+     ③ 用户自己滚动 → 立刻取消校正窗口（回看、复制都不会被打断）。 */
+  let caretRaf = 0, lastEditAt = 0, expectTop = -1;
   function markEdit() { lastEditAt = Date.now(); ensureCaret(); }
+  function cancelEdit() { lastEditAt = 0; }
   const ensureCaret = () => {
     if (caretRaf) return;
     caretRaf = requestAnimationFrame(() => {
@@ -767,21 +781,42 @@ export function richBody(initial = '', { withImage = true, mention = null, place
         }
       } catch (e) { rect = null; }
       if (!rect || !rect.height) return;
-      let limit;                                       // 光标底边允许到达的最下方
-      if (floating) limit = bar.getBoundingClientRect().top - 10;   // 悬浮：工具条顶边
-      else if (vv) limit = (vv.offsetTop || 0) + vv.height - 12;    // 未悬浮：键盘顶沿
-      else limit = window.innerHeight - 12;
+      /* 遮挡线：工具条顶边（悬浮）/ 键盘顶沿（未悬浮）。只有整行都被压到这条线以下才算"被挡住"，
+         露出一半不抢——点选、选词、回看时的轻微遮挡优先尊重用户，不做纠正。 */
+      let shield;
+      if (floating) shield = bar.getBoundingClientRect().top;
+      else if (vv) shield = (vv.offsetTop || 0) + vv.height - 12;
+      else shield = window.innerHeight - 12;
       const visTop = (vv ? (vv.offsetTop || 0) : 0) + 8;
       let d = 0;
-      if (rect.bottom > limit) d = rect.bottom - limit;
-      else if (rect.top < visTop) d = rect.top - visTop;
+      if (rect.top >= shield - 2) d = rect.bottom - (shield - 8); // 整行被挡 → 上移到工具条上方
+      else if (rect.bottom < visTop) d = rect.bottom - visTop;    // 整行在可视区上方 → 下移回来
       if (Math.abs(d) > 1) {
-        if (scrollEl) scrollEl.scrollTop += d;
-        else window.scrollBy(0, d);
+        if (scrollEl) {
+          const next = scrollEl.scrollTop + d;
+          expectTop = next;                                       // 标记"这是我自己滚的"
+          scrollEl.scrollTop = next;
+        } else window.scrollBy(0, d);
       }
     });
   };
   ensureCaretFn = ensureCaret;
+  /* 用户主动滚动 → 立刻取消校正窗口（回看/复制不被打断）。
+     注意：scroll 事件是异步派发的，程序滚动和 iOS 自动滚动也会触发，
+     所以只有「手指在屏上 / 滚轮」才算用户意图，其余一律不让位。 */
+  let touching = false;
+  editor.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+  const endTouch = () => { touching = false; };
+  window.addEventListener('touchend', endTouch, { passive: true });
+  window.addEventListener('touchcancel', endTouch, { passive: true });
+  editor.addEventListener('wheel', cancelEdit, { passive: true });
+  const onUserScroll = () => {
+    const se = getScrollEl();
+    if (!se) return;
+    if (expectTop >= 0 && Math.abs(se.scrollTop - expectTop) <= 2) return;   // 我们自己滚的
+    if (touching) cancelEdit();
+  };
+  document.addEventListener('scroll', onUserScroll, true);
   let detach = () => {};
   try {
     const vv = window.visualViewport;
@@ -792,6 +827,9 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     const onOrient = () => { baseVh = 0; onVV(); };
     detach = () => {
       stopTick();
+      document.removeEventListener('scroll', onUserScroll, true);
+      window.removeEventListener('touchend', endTouch);
+      window.removeEventListener('touchcancel', endTouch);
       if (vv) { vv.removeEventListener('resize', onVV); vv.removeEventListener('scroll', onVV); }
       window.removeEventListener('resize', onVV);
       window.removeEventListener('orientationchange', onOrient);
@@ -812,12 +850,9 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   editor.addEventListener('blur', () => setTimeout(() => {
     if (document.activeElement !== editor) setFloat(false);
   }, 150));
-  editor.addEventListener('input', markEdit);          // 打字/换行 → 光标立刻回到工具条上方
-  editor.addEventListener('keyup', markEdit);
+  editor.addEventListener('input', markEdit);          // 打字/换行 → 光标回到工具条上方（唯一主动干预时机）
   editor.addEventListener('paste', () => setTimeout(markEdit, 60));   // 粘贴后重新归位
-  document.addEventListener('selectionchange', () => {
-    try { if (document.activeElement === editor) markEdit(); } catch (e) {}
-  });
+  /* 注意：这里刻意不监听 selectionchange / keyup——点选文字想复制时不能抢滚动 */
   if (mention) attachMention(editor, mention);
   return {
     el: wrap,
