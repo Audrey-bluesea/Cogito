@@ -167,17 +167,29 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
 
   let open = false, dragging = false, decided = false, horiz = false;
   let startX = 0, startY = 0, curX = 0, pid = null, suppressClick = false;
+  let lastX = 0, lastT = 0, vel = 0;                     // 甩动速度(px/ms)：支持「一甩到底」
   const ACT_W = () => actions.offsetWidth || 150;
-  const setX = (v) => { curX = v; card.style.transform = `translateX(${v}px)`; };
-  const setOpen = (v) => {
+  const EASE = 'transform .3s cubic-bezier(.22,.61,.36,1)';
+  const setX = (v, anim) => {
+    curX = v;
+    card.style.transition = anim ? EASE : 'none';
+    card.style.transform = `translate3d(${Math.round(v)}px,0,0)`;
+  };
+  const setOpen = (v, anim = true) => {
     open = v;
     wrap.classList.toggle('open', v);
     actions.style.pointerEvents = v ? 'auto' : 'none';   // 单一可信状态源：露出的按钮立刻可点
     if (v) { _closeOthers(); _openRows.add(wrap); } else { _openRows.delete(wrap); }
-    card.style.transition = 'transform .25s ease';
-    setX(v ? -ACT_W() : 0);
+    setX(v ? -ACT_W() : 0, anim);
   };
-  setOpen(false);
+  /* 松手永远吸附到「全开 / 全关」两个稳定态，绝不留在中间位置 */
+  const snap = () => {
+    const max = ACT_W();
+    const stale = Date.now() - lastT > 120;               // 松手前停顿过 → 不算甩动
+    const flick = !stale && Math.abs(vel) > 0.3;
+    setOpen(flick ? vel < 0 : curX < -max / 2);
+  };
+  setOpen(false, false);
   wrap._close = () => setOpen(false);
 
   // 按钮：纯 click。按钮是 card 的兄弟节点，触摸不冒泡到 card，iOS 合成 click 直接命中按钮本身。
@@ -185,17 +197,23 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   editBtn.addEventListener('click', e => { e.stopPropagation(); fire(onEdit); });
   delBtn.addEventListener('click', e => { e.stopPropagation(); fire(onDelete); });
 
-  const onDown = (x, y, id) => { pid = id; startX = x; startY = y; dragging = true; decided = false; horiz = false; suppressClick = false; card.style.transition = ''; };
+  const onDown = (x, y, id) => {
+    pid = id; startX = x; startY = y; dragging = true; decided = false; horiz = false; suppressClick = false;
+    lastX = x; lastT = Date.now(); vel = 0;
+    card.style.transition = 'none';
+  };
   const onMove = (x, y, e) => {
     if (!dragging) return;
     const mx = x - startX, my = y - startY;
-    if (!decided) { if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) > Math.abs(my); } else return; }
-    if (!horiz) { dragging = false; return; }               // 纵向 → 交还页面滚动
+    if (!decided) { if (Math.abs(mx) > 8 || Math.abs(my) > 8) { decided = true; horiz = Math.abs(mx) >= Math.abs(my) * 0.85; } else return; }
+    if (!horiz) { dragging = false; setOpen(open); return; }   // 纵向 → 交还页面滚动并归位
     if (e && e.cancelable) e.preventDefault();
+    const now = Date.now();
+    if (now > lastT) { vel = (x - lastX) / (now - lastT); lastX = x; lastT = now; }
     const max = ACT_W();
     let v = (open ? -max : 0) + mx;
     v = Math.max(-max - 24, Math.min(0, v));
-    card.style.transition = ''; setX(v);
+    setX(v);
   };
   const onUp = (e) => {
     if (!dragging) return;
@@ -203,7 +221,7 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
     if (decided && horiz) {
       suppressClick = true;                                // 拖拽后抑制 iOS 合成 click 误触
       if (e && e.cancelable) e.preventDefault();
-      if (curX < -ACT_W() / 2) setOpen(true); else setOpen(false);
+      snap();                                              // 位置过半 或 快速甩 → 一步到底
     }
   };
 
@@ -211,7 +229,18 @@ export function swipeRow(card, { onEdit, onDelete, onTap } = {}) {
   card.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.pointerId));
   card.addEventListener('pointermove', e => { if (e.pointerId !== pid) return; onMove(e.clientX, e.clientY, e); });
   card.addEventListener('pointerup', e => { if (e.pointerId !== pid) return; onUp(e); });
-  card.addEventListener('pointercancel', () => { dragging = false; });
+  window.addEventListener('pointerup', e => { if (pid !== null && e.pointerId === pid) onUp(e); });
+  /* iOS 在系统接管滚动时会发 pointercancel：以前这里只把 dragging 置 false，
+     卡片就永久停在半路（要自己一直拉）——现在同样吸附到稳定态。 */
+  const onCancel = (e) => {
+    if (pid === null || (e && e.pointerId !== undefined && e.pointerId !== pid)) return;
+    if (!dragging) return;
+    dragging = false;
+    if (decided && horiz) { suppressClick = true; snap(); }
+    else setOpen(open);                                     // 未成横向手势 → 回到稳定态，不留半开
+  };
+  card.addEventListener('pointercancel', onCancel);
+  window.addEventListener('pointercancel', onCancel);       // 兜底：取消事件落在别处也能吸附
   card.addEventListener('click', e => {
     if (suppressClick) { suppressClick = false; e.stopPropagation(); return; }
     if (open) { e.stopPropagation(); setOpen(false); return; }
@@ -466,6 +495,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
       const imgs = editor.querySelectorAll('img');
       if (imgs.length) imgs[imgs.length - 1].classList.add('rte-img');
     }
+    setTimeout(markEdit, 80);                     // 插图后同样把光标钉回工具条上方
   };
   const bar = h('div', { class: 'rte-bar' });
   let fileInput;
@@ -654,7 +684,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     if (pop.parentNode === document.body) wrap.appendChild(pop);   // 颜色弹层归位
   };
   /* 悬浮期间每帧校正 + 同步底部留白（键盘动画期间数值一直在变） */
-  let tickId = 0, lastPad = -1;
+  let tickId = 0, lastPad = -1, ensureCaretFn = () => {};
   const syncPad = () => {
     const scrollEl = getScrollEl();
     if (!scrollEl) return;
@@ -669,6 +699,7 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     if (!editor.isConnected) { setFloat(false); return; }
     placeBar();
     syncPad();
+    ensureCaretFn();                                 // 每帧顺带把光标钉在工具条上方
     tickId = requestAnimationFrame(tick);
   };
   const startTick = () => { if (!tickId) tickId = requestAnimationFrame(tick); };
@@ -705,16 +736,21 @@ export function richBody(initial = '', { withImage = true, mention = null, place
     else if (!isFocused() || kbInset() < 24) setFloat(false); // 键盘真收起 / 真失焦才归位
     else if (floating) placeBar();                            // 动画中间值：保持悬浮并继续校正
   };
-  /* 光标可见：把光标滚进「工具条上方」的可见区内 */
-  let caretRaf = 0;
+  /* 光标可见：把光标钉在「悬浮工具条上方」
+     修复「打字/粘贴到最底部，文字藏在工具条后面，要自己往上拉」：
+     ① 上限不再用推算的 vv.height，而是直接取工具条真实顶边（fixed 元素 rect 就是布局视口坐标，最可靠）；
+     ② 悬浮期间由 rAF tick 每帧调用 → 换行、粘贴、插图后立刻归位，不用手动滚；
+     ③ 加 1.6s「编辑活跃窗口」：用户主动上滑回看时不会被强行拽回底部。 */
+  let caretRaf = 0, lastEditAt = 0;
+  function markEdit() { lastEditAt = Date.now(); ensureCaret(); }
   const ensureCaret = () => {
     if (caretRaf) return;
     caretRaf = requestAnimationFrame(() => {
       caretRaf = 0;
       if (document.activeElement !== editor) return;
+      if (Date.now() - lastEditAt > 1600) return;      // 非活跃编辑期：不打扰手动滚动
       const vv = window.visualViewport;
-      const scrollEl = editor.closest ? editor.closest('.scroll') : null;
-      if (!vv || !scrollEl) return;
+      const scrollEl = getScrollEl();
       let rect = null;
       try {
         const s = window.getSelection();
@@ -731,16 +767,21 @@ export function richBody(initial = '', { withImage = true, mention = null, place
         }
       } catch (e) { rect = null; }
       if (!rect || !rect.height) return;
-      // 光标必须避开悬浮工具条占用区（含 iOS 附件栏净空）
-      const barH = floating ? bar.offsetHeight + EXTRA_BOTTOM + 12 : 0;
-      const visTop = (vv.offsetTop || 0) + 8;
-      const visBottom = (vv.offsetTop || 0) + vv.height - barH - 8;
+      let limit;                                       // 光标底边允许到达的最下方
+      if (floating) limit = bar.getBoundingClientRect().top - 10;   // 悬浮：工具条顶边
+      else if (vv) limit = (vv.offsetTop || 0) + vv.height - 12;    // 未悬浮：键盘顶沿
+      else limit = window.innerHeight - 12;
+      const visTop = (vv ? (vv.offsetTop || 0) : 0) + 8;
       let d = 0;
-      if (rect.bottom > visBottom) d = rect.bottom - visBottom;
+      if (rect.bottom > limit) d = rect.bottom - limit;
       else if (rect.top < visTop) d = rect.top - visTop;
-      if (Math.abs(d) > 1) scrollEl.scrollTop += d;
+      if (Math.abs(d) > 1) {
+        if (scrollEl) scrollEl.scrollTop += d;
+        else window.scrollBy(0, d);
+      }
     });
   };
+  ensureCaretFn = ensureCaret;
   let detach = () => {};
   try {
     const vv = window.visualViewport;
@@ -764,14 +805,19 @@ export function richBody(initial = '', { withImage = true, mention = null, place
   } catch (e) {}
   /* 聚焦后多点采样：iOS 键盘是动画长出来的，单次测量几乎必错 */
   editor.addEventListener('focus', () => {
+    markEdit();
     [60, 120, 200, 320, 480, 700, 1000, 1500].forEach(ms =>
-      setTimeout(() => { syncFloat(); ensureCaret(); }, ms));
+      setTimeout(() => { syncFloat(); markEdit(); }, ms));
   });
   editor.addEventListener('blur', () => setTimeout(() => {
     if (document.activeElement !== editor) setFloat(false);
   }, 150));
-  editor.addEventListener('input', ensureCaret);
-  editor.addEventListener('keyup', ensureCaret);
+  editor.addEventListener('input', markEdit);          // 打字/换行 → 光标立刻回到工具条上方
+  editor.addEventListener('keyup', markEdit);
+  editor.addEventListener('paste', () => setTimeout(markEdit, 60));   // 粘贴后重新归位
+  document.addEventListener('selectionchange', () => {
+    try { if (document.activeElement === editor) markEdit(); } catch (e) {}
+  });
   if (mention) attachMention(editor, mention);
   return {
     el: wrap,
