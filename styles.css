@@ -35,7 +35,6 @@
   --sh:        120, 105, 85;   /* 阴影 RGB（暖褐）*/
   --mask:      91, 90, 87;     /* 遮罩 RGB（暖灰）*/
   --bg-grad:   linear-gradient(165deg, #ECE5D9 0%, #E9E2D6 50%, #DFD5C5 100%);
-  --appbar-grad: linear-gradient(180deg, rgba(233,226,214,.96) 60%, rgba(233,226,214,.72));
 
   --shadow:    0 4px 14px rgba(var(--sh), .10);
   --shadow-hi: 0 8px 22px rgba(var(--sh), .16);
@@ -72,7 +71,6 @@
   --sh:        150, 140, 125;
   --mask:      90, 86, 80;
   --bg-grad:   linear-gradient(165deg, #FFFFFF 0%, #FDFBF7 50%, #F6F0E6 100%);
-  --appbar-grad: linear-gradient(180deg, rgba(253,251,247,.96) 60%, rgba(253,251,247,.72));
 }
 
 /* —— 主题 3：日系透明 · 水彩空气感（薄荷奶绿 + 灰紫 + 杏色）—— */
@@ -95,7 +93,6 @@
   --sh:        130, 140, 130;
   --mask:      90, 95, 88;
   --bg-grad:   linear-gradient(165deg, #F2F6F1 0%, #EBF0EA 50%, #DDE6DD 100%);
-  --appbar-grad: linear-gradient(180deg, rgba(235,240,234,.96) 60%, rgba(235,240,234,.72));
 }
 
 /* —— 主题 4：海风亚麻 · 阳光晒暖（石灰白 + 浅海蓝 + 陶土粉 + 柠檬黄）—— */
@@ -119,7 +116,6 @@
   --sh:        130, 138, 142;   /* 冷调阴影（海风通透）*/
   --mask:      92, 96, 99;
   --bg-grad:   linear-gradient(165deg, #FCFAF6 0%, #F9F6F0 50%, #F1ECE3 100%);
-  --appbar-grad: linear-gradient(180deg, rgba(249,246,240,.96) 60%, rgba(249,246,240,.72));
 }
 
 /* —— 主题 5：晨雾暮光 · 渐变柔光（石灰白 + 晨雾蓝→淡紫灰→暖杏 渐变柔光）—— */
@@ -143,7 +139,6 @@
   --sh:        150, 145, 155;
   --mask:      120, 115, 130;
   --bg-grad:   linear-gradient(180deg, #D4DCE8 0%, #DFD8E0 52%, #F5E6D3 100%);
-  --appbar-grad: linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 100%);
 
   /* —— 渐变柔光专属 token —— */
   --accent-grad: linear-gradient(135deg, #D4DCE8 0%, #DFD8E0 50%, #F5E6D3 100%);
@@ -176,7 +171,6 @@
   --sh:        130, 175, 165;
   --mask:      120, 165, 155;
   --bg-grad:   linear-gradient(180deg, #C6E9E9 0%, #CBEBE2 45%, #D1EBDB 100%);
-  --appbar-grad: linear-gradient(180deg, rgba(198,233,233,.28) 0%, rgba(198,233,233,0) 100%);
 
   /* —— 薄荷专属 token（青蓝透亮调）—— */
   --accent-grad: linear-gradient(135deg, #5FBAA3 0%, #74CBB8 50%, #98DDD0 100%);
@@ -191,7 +185,11 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html {
-  font-size: 16px;
+  /* 大屏适配：≤400pt 完全保持 16px（与 iPhone 14 Pro 等旧机观感一致），
+     400→425pt 之间平滑放大到 17px 后封顶。Pro Max 级别只放大约 6%，
+     避免字号/间距/TabBar 在宽屏上显得占比过小。
+     注：时间轴的小时行高(60/68px)与「1px≈1min」刻度语义是 px，不参与缩放。*/
+  font-size: clamp(16px, 4vw, 17px);
   height: 100%;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -383,12 +381,8 @@ a { color: inherit; text-decoration: none; }
 /* 冰泉薄荷主题：不使用任何装饰画（隐藏默认向日葵） */
 [data-theme="mint"] .d-sunflower { display: none; }
 
-/* 顶部栏：完全融合渐变背景，无色块感 */
-[data-theme="mint"] .appbar {
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
+/* 顶部栏融合背景的规则已上移到 .appbar 基础样式，所有主题统一生效
+   （此前只有冰泉薄荷单独处理，导致其余主题顶部出现色块/白雾）*/
 
 /* ═══════ 渐变主题通用：网格卡片字号微调（长标题一行容纳）═══════ */
 [data-theme="mist"] .gcard-title,
@@ -460,15 +454,18 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* —— 顶部标题栏 —— */
+/* 顶部栏完全融合背景：不铺色块、不做模糊，让主题渐变一路铺到状态栏。
+   （appbar 是 flex 内的静态元素，内容只在其下方滚动，不会与其重叠，
+     因此不需要遮罩层；这点与 iOS 原生导航栏的叠加式布局不同。）*/
 .appbar {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: .5rem;
   padding: calc(var(--sa-top) + .65rem) 1rem .65rem;
-  background: var(--appbar-grad);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .appbar h1 { flex: 1; margin: 0; font-size: 1.4rem; font-weight: 600; letter-spacing: .04em; font-family: var(--font-title); }
 .appbar .sub { display: block; font-size: .7rem; font-weight: 500; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }

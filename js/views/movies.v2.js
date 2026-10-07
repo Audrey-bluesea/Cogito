@@ -84,7 +84,7 @@ export async function list(nav) {
   }
 
   return pageShell({
-    title: '影视', sub: 'Moives', toolbar,
+    title: '影视', sub: 'Movies', toolbar,
     actions: [
       h('button', { class: 'icon-btn', onclick: () => nav('#/search'), 'aria-label': '全局搜索' }, icon('search'))
     ],
