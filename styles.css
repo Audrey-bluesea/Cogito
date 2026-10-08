@@ -191,11 +191,10 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html {
-  /* 大屏适配：≤400pt 完全保持 16px（与 iPhone 14 Pro 等旧机观感一致），
-     400→425pt 之间平滑放大到 17px 后封顶。Pro Max 级别只放大约 6%，
-     避免字号/间距/TabBar 在宽屏上显得占比过小。
+  /* v117：还原为固定 16px。v115 的 clamp(16px,4vw,17px) 在 Pro Max(440pt) 上放大到 17px，
+     用户反馈字号偏大、不如原来舒服，故回退到全机型统一 16px（与换机前一致）。
      注：时间轴的小时行高(60/68px)与「1px≈1min」刻度语义是 px，不参与缩放。*/
-  font-size: clamp(16px, 4vw, 17px);
+  font-size: 16px;
   height: 100%;
   /* 根元素也要有不透明底色：让系统的顶部/底部玻璃着色有确定的取样值，不要留 transparent。 */
   background-color: var(--bg-top);
