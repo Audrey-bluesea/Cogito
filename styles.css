@@ -20,8 +20,8 @@
   --card:      #F6F1E8;   /* 暖米白卡片（哑光磨砂）*/
   --text:      #6B6356;   /* 暖褐灰（重色文字，非沉重暗色）*/
   --muted:     #A89C8B;   /* 暖灰（辅助文字/占位符）*/
-  --accent:    #D9B8A4;   /* 脏橘（主点缀）*/
-  --accent-d:  #C29A82;   /* 深一档脏橘（浅底上的强调文字）*/
+  --accent:    #C07A3E;   /* 锈橙（主点缀，与米色背景拉开，不再糊成一片）*/
+  --accent-d:  #A3632F;   /* 深一档锈橙（强调文字）*/
   --blue:      #9AABBF;   /* 深海蓝灰（次点缀）*/
   --rose:      #E6CFC2;   /* 浅脏橘（柔和点缀/危险渐变起）*/
   --period:    #EBA9BE;   /* 月经标记：柔粉（不随主题变化，保证各主题都能一眼认出）*/
@@ -56,11 +56,11 @@
 [data-theme="oat"] {
   --bg:        #FDFBF7;   /* 燕麦色底 */
   --bg2:       #F4EFE6;
-  --card:      #FCFBF7;
+  --card:      #FBF4F2;   /* 微玫瑰白卡片（带主题色调）*/
   --text:      #6E6A62;
   --muted:     #A99F93;
-  --accent:    #D9B0AA;   /* 干燥玫瑰粉（主点缀）*/
-  --accent-d:  #C2938C;
+  --accent:    #E097A8;   /* 干玫瑰粉（主点缀，比原 #D9B0AA 更鲜明粉）*/
+  --accent-d:  #C77E90;
   --blue:      #A9B6A5;   /* 鼠尾草灰绿（次点缀）*/
   --rose:      #EBD2CD;
   --deco:      #E6DFD2;   /* 比燕麦底深一色阶 */
@@ -79,11 +79,11 @@
 [data-theme="aqua"] {
   --bg:        #EBF0EA;   /* 带灰的薄荷奶绿 */
   --bg2:       #E0E7DF;
-  --card:      #F7FAF5;
+  --card:      #F1F7F2;   /* 微绿白卡片（带主题色调）*/
   --text:      #6A6E68;
   --muted:     #9FA89F;
-  --accent:    #DDD9E6;   /* 浅灰紫（主点缀，更淡）*/
-  --accent-d:  #C8C2D6;
+  --accent:    #E89A7E;   /* 珊瑚杏（主点缀，避开与晨雾撞紫，给日系水彩一点暖）*/
+  --accent-d:  #CE7C5E;
   --blue:      #F6E8DD;   /* 杏色（次点缀）*/
   --rose:      #EFE7DC;
   --deco:      #D5DDD4;   /* 比薄荷底深一色阶 */
@@ -102,11 +102,11 @@
 [data-theme="linen"] {
   --bg:        #F9F6F0;   /* 石灰白墙面底 */
   --bg2:       #F2ECE2;
-  --card:      #FDFCF9;   /* 近白卡片（大量留白）*/
+  --card:      #F4F8F9;   /* 微蓝白卡片（带主题色调）*/
   --text:      #5C574E;   /* 暖褐灰（墨色文字）*/
   --muted:     #A89E90;   /* 暖灰 */
-  --accent:    #D9A99A;   /* 褪色陶土粉（主点缀）*/
-  --accent-d:  #C58E7E;
+  --accent:    #3F9DB5;   /* 海蓝（主点缀，"海风亚麻"的主题色，与燕麦玫瑰拉开）*/
+  --accent-d:  #2E8298;
   --blue:      #88B5C6;   /* 灰调浅海蓝（次点缀）*/
   --rose:      #E8D9C8;   /* 柔陶土（渐变起）*/
   --lemon:     #E9DBA6;   /* 淡柠檬黄（点缀）*/
@@ -126,11 +126,11 @@
 [data-theme="mist"] {
   --bg:        #F6F3F0;   /* 石灰白基底 */
   --bg2:       #ECE7E2;
-  --card:      #FFFFFF;   /* 纯白卡片 */
+  --card:      #F7F4FA;   /* 微紫白卡片（带主题色调）*/
   --text:      #6B6470;   /* 柔雾灰紫（重色文字）*/
   --muted:     #A99FA8;   /* 淡雾灰紫（辅助文字）*/
-  --accent:    #C9BFD8;   /* 淡紫灰（主点缀，渐变中段）*/
-  --accent-d:  #B6A9C8;   /* 深一档淡紫（强调文字）*/
+  --accent:    #A88FD6;   /* 薰衣草紫（主点缀，比原 #C9BFD8 更鲜明，避开与水彩撞色）*/
+  --accent-d:  #8C6FC2;   /* 深一档紫（强调文字）*/
   --blue:      #B9C6D6;   /* 晨雾蓝（次点缀）*/
   --rose:      #EAD9C9;   /* 暖杏（柔和点缀）*/
   --lemon:     #E9DBA6;
@@ -146,7 +146,7 @@
   --bg-top:   #D4DCE8;   /* 页面最顶部实色（iOS 顶部玻璃取色采样点，须与渐变首色一致）*/
 
   /* —— 渐变柔光专属 token —— */
-  --accent-grad: linear-gradient(135deg, #D4DCE8 0%, #DFD8E0 50%, #F5E6D3 100%);
+  --accent-grad: linear-gradient(135deg, #B89FE0 0%, #A88FD6 50%, #C9B6E8 100%);
   --gold-grad:   linear-gradient(135deg, #E8D5B5 0%, #DCC49A 100%);
   --halo-grad:   linear-gradient(135deg, rgba(212,220,232,.55) 0%, rgba(223,216,224,.4) 50%, rgba(245,230,211,.55) 100%);
   --card-sheen:  linear-gradient(135deg, rgba(212,220,232,.10) 0%, rgba(223,216,224,.05) 45%, rgba(245,230,211,0) 100%);
@@ -287,7 +287,7 @@ a { color: inherit; text-decoration: none; }
 [data-theme="mist"] .sr-card,
 [data-theme="mist"] .stat,
 [data-theme="mist"] .flow-badge {
-  background: rgba(255,255,255,.66);
+  background: rgba(244,240,250,.66);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   border: 1px solid rgba(255,255,255,.55);
@@ -309,7 +309,7 @@ a { color: inherit; text-decoration: none; }
 /* Tab 选中：渐变下划线 + 柔光背景块 */
 [data-theme="mist"] .tab.on::after { background: var(--accent-grad); }
 [data-theme="mist"] .tab.on {
-  background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0));
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   border-radius: .6rem;
 }
 
@@ -356,7 +356,7 @@ a { color: inherit; text-decoration: none; }
 /* Tab 选中：明亮青绿下划线 + 柔光背景块 */
 [data-theme="mint"] .tab.on::after { background: var(--accent-grad); }
 [data-theme="mint"] .tab.on {
-  background: linear-gradient(180deg, rgba(95,186,163,.16), rgba(95,186,163,0));
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   border-radius: .6rem;
 }
 
@@ -477,7 +477,7 @@ a { color: inherit; text-decoration: none; }
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .icon-btn:active { transform: scale(.9); }
-.icon-btn.plus { background: linear-gradient(145deg, var(--rose), var(--accent)); color: var(--text); font-weight: 600; box-shadow: 0 2px 8px rgba(var(--sh),.22); }
+.icon-btn.plus { background: linear-gradient(145deg, var(--accent), var(--accent-d)); color: var(--text); font-weight: 600; box-shadow: 0 2px 8px rgba(var(--sh),.22); }
 /* 弹窗内的图标按钮去掉白底/阴影/描边，融进毛玻璃面板（去除白边） */
 .sheet .icon-btn { background: transparent; box-shadow: none; border: none; }
 
@@ -584,7 +584,7 @@ body.editing .tabbar { transform: translateY(110%); opacity: 0; pointer-events: 
   display: flex; align-items: center; justify-content: center;
   font-size: 1.7rem; line-height: 1; font-weight: 600;
   color: var(--text);
-  background: linear-gradient(145deg, var(--rose), var(--accent));
+  background: linear-gradient(145deg, var(--accent), var(--accent-d));
   box-shadow: 0 4px 14px rgba(var(--sh), .3);
   cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease, opacity .2s ease;
@@ -603,7 +603,9 @@ body.has-fab .scroll { padding-bottom: calc(var(--tabbar-h) + var(--sa-bottom) +
   transition: color .2s ease;
 }
 .tab .tab-ico { font-size: 1.28rem; line-height: 1.1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); opacity: .72; }
-.tab.on { color: var(--text); font-weight: 700; }
+.tab.on { color: var(--text); font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-radius: .6rem; }
 .tab.on .tab-ico { transform: translateY(-2px) scale(1.14); opacity: 1; }
 .tab-ico.tab-tw { width: 1.45rem; height: 1.45rem; vertical-align: -.34em; }
 .tab.on::after {
