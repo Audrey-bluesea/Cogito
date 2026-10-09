@@ -401,6 +401,87 @@ export function imagePicker(initial = '', placeholderEmoji = 'bookmark') {
   return { el, get: () => data };
 }
 
+/* ---------- 多图选择（最多 max 张）+ 网格预览 + 点开灯箱 ---------- */
+/** 返回 { el, get }：get() 回传当前图片数组（data URL） */
+export function imageGridPicker(initial = [], max = 9, placeholderEmoji = 'image') {
+  let imgs = Array.isArray(initial) ? initial.filter(Boolean).slice() : (initial ? [initial] : []);
+  const grid = h('div', { class: 'img-grid' });
+  const input = h('input', { type: 'file', accept: 'image/*', multiple: true, style: { display: 'none' } });
+  const paint = () => {
+    grid.innerHTML = '';
+    imgs.forEach((src, i) => {
+      grid.appendChild(h('div', { class: 'img-thumb' },
+        h('img', { src, alt: '' }),
+        h('button', { type: 'button', class: 'img-rm', 'aria-label': '移除', onclick: (e) => { e.stopPropagation(); imgs.splice(i, 1); paint(); } }, '×')
+      ));
+    });
+    if (imgs.length < max) {
+      grid.appendChild(h('button', { type: 'button', class: 'img-add', onclick: () => input.click() },
+        icon(placeholderEmoji),
+        h('span', { class: 'img-count' }, imgs.length + '/' + max)
+      ));
+    }
+  };
+  input.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const f of files) {
+      if (imgs.length >= max) { toast('最多 ' + max + ' 张哦'); break; }
+      try { imgs.push(await compressImage(f)); } catch { toast('图片读取失败'); }
+    }
+    input.value = '';
+    paint();
+  });
+  grid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.img-thumb');
+    if (cell && !e.target.closest('.img-rm')) {
+      const idx = Array.from(grid.querySelectorAll('.img-thumb')).indexOf(cell);
+      if (idx >= 0) openLightbox(imgs, idx);
+    }
+  });
+  const el = h('div', { class: 'uploader-grid' }, grid, input);
+  paint();
+  return { el, get: () => imgs.slice() };
+}
+
+/** 全屏灯箱：点九宫格任意图看大图，支持左右切换(按钮/滑动/方向键)、轻点关闭 */
+export function openLightbox(imgs, startIndex = 0) {
+  if (!imgs || !imgs.length) return;
+  let idx = Math.max(0, Math.min(startIndex, imgs.length - 1));
+  const layer = h('div', { class: 'img-lightbox' });
+  const imgEl = h('img', { class: 'lb-img', alt: '', src: imgs[idx] });
+  const counter = h('div', { class: 'lb-count' });
+  const closeBtn = h('button', { type: 'button', class: 'lb-close', 'aria-label': '关闭', onclick: () => close() }, '×');
+  const prevBtn = h('button', { type: 'button', class: 'lb-nav lb-prev', 'aria-label': '上一张', onclick: (e) => { e.stopPropagation(); go(-1); } }, '‹');
+  const nextBtn = h('button', { type: 'button', class: 'lb-nav lb-next', 'aria-label': '下一张', onclick: (e) => { e.stopPropagation(); go(1); } }, '›');
+  const render = () => {
+    imgEl.src = imgs[idx];
+    counter.textContent = imgs.length > 1 ? (idx + 1) + ' / ' + imgs.length : '';
+    const multi = imgs.length > 1;
+    prevBtn.style.display = multi ? '' : 'none';
+    nextBtn.style.display = multi ? '' : 'none';
+  };
+  const go = (d) => { idx = (idx + d + imgs.length) % imgs.length; render(); };
+  const close = () => { if (layer.parentNode) layer.parentNode.removeChild(layer); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); else if (e.key === 'ArrowLeft') go(-1); else if (e.key === 'ArrowRight') go(1); };
+  let sx = 0, sy = 0, s = false;
+  layer.addEventListener('pointerdown', e => { s = true; sx = e.clientX; sy = e.clientY; });
+  layer.addEventListener('pointerup', e => {
+    if (!s) return; s = false;
+    if (e.target.closest('.lb-nav, .lb-close')) return;   // 点按钮不触发滑动/关闭
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+    else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) close();   // 轻点 = 关闭
+  });
+  layer.appendChild(imgEl);
+  layer.appendChild(counter);
+  layer.appendChild(closeBtn);
+  layer.appendChild(prevBtn);
+  layer.appendChild(nextBtn);
+  document.body.appendChild(layer);
+  document.addEventListener('keydown', onKey);
+  render();
+}
+
 /* ---------- 正文渲染 / @关联 检索 ---------- */
 /** 去掉 HTML 标签，得到纯文本（用于列表预览 / 搜索 / 摘要）*/
 export function stripBody(html) {

@@ -2,7 +2,7 @@
 import { db } from '../db.v2.js';
 import {
   h, icon, pageShell, editorShell, detailShell, emptyState, field, input, textarea, select,
-  emojiPicker, imagePicker, swipeRow, confirmSheet, toast, todayISO, weekdayCN, dayOf, monOf, fmtDate,
+  emojiPicker, imageGridPicker, openLightbox, swipeRow, confirmSheet, toast, todayISO, weekdayCN, dayOf, monOf, fmtDate,
   radioGroup, richBody, mentionSource, stripBody, renderBody, truncate, globalSearchRow, nowLocalDT, journalAmbiance
 } from '../ui.v2.js';
 import { WEATHER_OPTIONS, DEFAULT_WEATHER } from '../weather.v2.js';
@@ -228,6 +228,31 @@ function mealTags(r) {
     h('span', { class: 'meal-tag' }, ico + ' ' + String(v).trim())));
 }
 
+/** 插图归一化：兼容旧版单字段 illustration（字符串），统一返回数组 */
+function getIllustrations(r) {
+  if (Array.isArray(r?.illustrations) && r.illustrations.length) return r.illustrations.filter(Boolean);
+  if (r?.illustration) return [r.illustration];
+  return [];
+}
+
+/** 九宫格：1 张大图 / 4 张 2×2 / 其它 3×3；点格打开灯箱（stopPropagation 避免列表卡片误跳转） */
+function illustrationGrid(imgs, where) {
+  const n = imgs.length;
+  const cls = 'ill-grid ' + (where === 'detail' ? 'detail ' : 'list ') + (n === 1 ? 'one' : n === 4 ? 'four' : '');
+  const grid = h('div', { class: cls.trim() });
+  imgs.forEach((src, i) => {
+    const cell = h('div', { class: 'ill-cell' }, h('img', { src, alt: '', loading: 'lazy' }));
+    cell.addEventListener('click', (e) => { e.stopPropagation(); openLightbox(imgs, i); });
+    grid.appendChild(cell);
+  });
+  return grid;
+}
+
+function illGridOf(r, where) {
+  const imgs = getIllustrations(r);
+  return imgs.length ? illustrationGrid(imgs, where) : null;
+}
+
 function card(r, nav, q) {
   const qx = q ? '?q=' + encodeURIComponent(q) : '';
   const excerpt = stripBody(r.content);
@@ -243,9 +268,7 @@ function card(r, nav, q) {
           h('span', { style: { fontSize: '1.15rem' } }, r.mood || '😊')
         ),
         h('p', { class: 'card-body' + (excerpt ? '' : ' ambiance-text'), style: { marginTop: '.3rem' } }, excerpt || journalAmbiance(r)),
-        r.illustration
-          ? h('img', { class: 'jr-illus', src: r.illustration, alt: '插图' })
-          : null,
+        illGridOf(r, 'list'),
         mealTags(r)
       )
     ),
@@ -356,7 +379,7 @@ export async function detail(id, nav, query) {
       )
     ),
     contentEl,
-    r.illustration ? h('img', { class: 'd-illus', src: r.illustration, alt: '插图' }) : null,
+    illGridOf(r, 'detail'),
     (r.breakfast || r.lunch || r.dinner)
       ? h('div', { class: 'd-section' },
           h('div', { class: 'd-label', 'data-en': 'MEALS' }, '今日三餐'),
@@ -442,7 +465,7 @@ export async function edit(id, nav, query) {
   const tempMaxIn = input({ type: 'number', inputmode: 'decimal', class: 'input temp-input', value: rec?.tempMax ?? '' });
   const mood = emojiPicker(MOODS, rec?.mood || '😊');
   const kwIn = input({ placeholder: '', value: (rec?.keywords || []).join('，') });
-  const illus = imagePicker(rec?.illustration || '', 'image');
+  const illus = imageGridPicker(getIllustrations(rec), 9, 'image');
   /* 月经：一个月就几天，收进「更多选项」，不常驻表单 */
   const period = radioGroup(['无', '有'], rec?.period === '有' ? '有' : '无');
   const breakIn = input({ placeholder: '早餐', value: rec?.breakfast || '' });
@@ -503,7 +526,7 @@ export async function edit(id, nav, query) {
       tempMax: tempMaxIn.value === '' ? '' : String(Math.round(Number(tempMaxIn.value))),
       mood: mood.get(),
       keywords,
-      illustration: illus.get(),
+      illustrations: illus.get(),
       breakfast: breakIn.value.trim(),
       lunch: lunchIn.value.trim(),
       dinner: dinnerIn.value.trim(),

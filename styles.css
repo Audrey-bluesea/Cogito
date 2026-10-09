@@ -901,7 +901,37 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
   color: var(--muted); margin-left: .15rem;
 }
 .jr-meta { font-size: .74rem; color: var(--muted); }
-.jr-illus { width: 3.2rem; height: 3.2rem; object-fit: cover; border-radius: .6rem; margin-top: .4rem; box-shadow: var(--shadow); }
+
+/* —— 日记多图九宫格（列表 / 详情）—— */
+.ill-grid { display: grid; gap: .3rem; margin-top: .5rem; grid-template-columns: repeat(3, 1fr); }
+.ill-grid.four { grid-template-columns: repeat(2, 1fr); }
+.ill-grid.one  { grid-template-columns: 1fr; }
+.ill-cell { position: relative; overflow: hidden; border-radius: .55rem; background: var(--oat); box-shadow: var(--shadow); }
+.ill-cell img { width: 100%; display: block; object-fit: cover; aspect-ratio: 1 / 1; }
+.ill-grid.one .ill-cell { width: 9rem; }
+.ill-grid.one .ill-cell img { aspect-ratio: 4 / 3; }   /* 单图不强行正方，更像朋友圈 */
+.ill-grid.detail { margin-top: 1rem; gap: .4rem; }
+.ill-grid.detail.one { max-width: 82%; }
+.ill-grid.detail.one .ill-cell { width: auto; max-width: 100%; }
+.ill-grid.detail.one .ill-cell img { aspect-ratio: 4 / 3; max-height: 15rem; }
+.ill-grid.detail .ill-cell img { aspect-ratio: 1 / 1; }
+
+/* 编辑：多图上传网格 */
+.img-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.img-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: .5rem; overflow: hidden; background: var(--oat); }
+.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.img-rm { position: absolute; top: 2px; right: 2px; width: 1.35rem; height: 1.35rem; border: none; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: .9rem; line-height: 1.35rem; display: grid; place-items: center; padding: 0; }
+.img-add { aspect-ratio: 1 / 1; border: 1px dashed var(--border); border-radius: .5rem; background: var(--card); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; font-size: 1.6rem; }
+.img-add .img-count { font-size: .6rem; color: var(--muted); }
+.img-add .tw-icon { width: 1.6rem; height: 1.6rem; opacity: .55; }
+
+/* 全屏灯箱 */
+.img-lightbox { position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.lb-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: .4rem; }
+.lb-count { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .9rem); left: 0; right: 0; text-align: center; color: #fff; font-size: .85rem; opacity: .85; }
+.lb-close { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .7rem); right: .9rem; width: 2.2rem; height: 2.2rem; border: none; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 1.3rem; line-height: 1; }
+.lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 2.6rem; height: 2.6rem; border: none; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 1.7rem; line-height: 1; }
+.lb-prev { left: .5rem; } .lb-next { right: .5rem; }
 .badge {
   display: inline-block; padding: .08rem .42rem; border-radius: 999px;
   font-size: .62rem; font-weight: 600; background: var(--oat); color: var(--text);
