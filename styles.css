@@ -247,33 +247,14 @@ button, input, select, textarea { font-family: inherit; font-size: .88rem; color
 ::placeholder { font-size: .78rem; color: var(--muted); opacity: 1; }
 a { color: inherit; text-decoration: none; }
 
-/* ═══════ 装饰层（法式复古 · 手账拼贴）═══════ */
-.decor { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-.decor .d { position: absolute; }
+/* 已移除全部装饰画（v118）：月亮/云/星/雏菊/四叶草/薰衣草/邮票/火漆印章/海浪/橄榄/向日葵，
+   原 .decor 容器与 .d-sunflower 等死代码一并清除。评分星星的描边仍用 .f-deco-stroke（保留）。 */
 
-@keyframes floatY { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-14px) } }
-@keyframes floatX { 0%,100% { transform: translateX(0) } 50% { transform: translateX(16px) } }
-@keyframes twinkle { 0%,100% { opacity: .08; transform: scale(.92) } 50% { opacity: .18; transform: scale(1.05) } }
-@keyframes sway   { 0%,100% { transform: rotate(-4deg) } 50% { transform: rotate(5deg) } }
-@keyframes spinSlow { 0%,100% { transform: rotate(-6deg) } 50% { transform: rotate(8deg) } }
-
-/* 已移除：月亮 / 云 / 星 / 雏菊 / 四叶草 / 薰衣草 / 邮票 / 火漆印章 —— 全主题统一为海风亚麻装饰（海浪 + 橄榄 + 向日葵） */
-
-/* —— 装饰色随主题切换（由 index.html 形状 class 驱动）—— */
+/* —— 装饰色随主题切换（由 SVG 形状 class 驱动，目前仅评分星星描边在用）—— */
 .f-deco-fill   { fill: var(--deco); }
 .f-deco-stroke { stroke: var(--deco); }
 .f-accent-fill { fill: var(--accent); }
 .f-accent-stroke { stroke: var(--accent); }
-
-/* —— 统一装饰（全主题共用：仅右下角向日葵）—— */
-.d-sunflower { display: block; }
-
-.d-sunflower {
-  width: 4.2rem; height: auto; bottom: 6.2rem; left: .4rem; right: auto;
-  opacity: .14; transform-origin: bottom center; animation: sway 8s ease-in-out infinite;
-  object-fit: contain; border-radius: .3rem;
-}
-.decor .d { filter: blur(.25px); }   /* 淡彩轻微晕染 */
 
 /* 标题：仅左上角 tab 标题用衬线斜体；备忘录/书名/影视名等卡片与分组标题保持正体，与其他主题一致 */
 [data-theme="linen"] .appbar h1 { font-style: italic; }
@@ -297,7 +278,6 @@ a { color: inherit; text-decoration: none; }
 .star-empty { stop-color: var(--frost); }
 .star-empty-bg { fill: var(--frost); }
 /* 日系水彩：边缘晕染，无硬边 */
-[data-theme="aqua"] .decor .d { filter: blur(.35px); }
 
 /* ═══════ 主题 5：晨雾暮光 · 渐变柔光（专属样式）═══════ */
 /* 卡片：半透明白 + 毛玻璃，与渐变背景融合；极浅描边代替光晕（避免 iOS 遮罩 bug） */
@@ -393,8 +373,7 @@ a { color: inherit; text-decoration: none; }
 [data-theme="mint"] .star-empty-bg { fill: var(--star-empty); }
 [data-theme="mint"] .star-score { color: var(--star-gold-a); }
 
-/* 冰泉薄荷主题：不使用任何装饰画（隐藏默认向日葵） */
-[data-theme="mint"] .d-sunflower { display: none; }
+/* 冰泉薄荷主题：无特殊装饰（装饰画已在 v118 全量移除） */
 
 /* 顶部栏融合背景的规则已上移到 .appbar 基础样式，所有主题统一生效
    （此前只有冰泉薄荷单独处理，导致其余主题顶部出现色块/白雾）*/
