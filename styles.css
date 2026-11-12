@@ -188,6 +188,91 @@
   --star-empty:  #D1EBDB;
 }
 
+/* ═══════ 主题 7 / 8：月升海湾（浅暮蓝）· 月夜海湾（深月夜）═══════
+   画面自上而下：蓝调天空（满月 + 闪烁星子）→ 灰紫天边 → 远处湛蓝海 → 近处翠绿树林。
+   招牌色统一为「月光金」，与既有 6 套（锈橙/玫瑰/珊瑚/海蓝/薰衣草/青绿）互不撞色。
+   ⚠️ --bg-top 必填：iOS 26/27 顶栏玻璃的取色采样点，须与渐变首色一致。
+   星点/月晕全部是 CSS 渐变（含 ::before/::after 的缓慢闪烁层），不用任何贴图。 */
+[data-theme="moon-a"] {
+  --bg:       #C9C3D4;
+  --bg2:      #B9C4DA;
+  --card:     #F6F5FB;
+  --text:     #3E4262;
+  --muted:    #8888A6;
+  --accent:   #D9A441;   /* 月光金 */
+  --accent-d: #B9842C;
+  --blue:     #6E9BC4;
+  --rose:     #8FBFA2;
+  --deco:     #5AA083;
+  --border:   #DCD9E8;
+  --oat:      #E7E5F0;
+  --danger:   #C07D84;
+  --tint:     #F3E7C9;
+  --frost:    #FCFBFF;
+  --sh:       95,98,135;
+  --mask:     70,72,105;
+  --bg-top:   #9FBBDC;
+  --bg-grad:
+    /* 月晕：右上柔和暖光 */
+    radial-gradient(circle 120px at 80% 5%, rgba(255,240,195,.45), transparent 70%),
+    /* 静态星子（另有 ::before/::after 做缓慢闪烁） */
+    radial-gradient(circle 1.2px at 23% 10%, rgba(255,252,235,.80), transparent 100%),
+    radial-gradient(circle 1.1px at 52% 4%,  rgba(255,252,235,.65), transparent 100%),
+    radial-gradient(circle 1.2px at 92% 14%, rgba(255,252,235,.72), transparent 100%),
+    /* 近处翠绿树林（底部两角晕染） */
+    radial-gradient(ellipse 55% 15% at 3% 100%,  rgba(58,140,104,.30), transparent 72%),
+    radial-gradient(ellipse 55% 15% at 97% 100%, rgba(58,140,104,.30), transparent 72%),
+    linear-gradient(180deg,
+      #9FBBDC 0%,   /* 蓝调天空 */
+      #ACB8D8 28%,
+      #BDB4CE 56%,  /* 转灰紫 */
+      #C9BFD0 72%,  /* 灰紫天边 */
+      #A8C0D6 84%,  /* 远处湛蓝海 */
+      #CFC8D6 100%);
+}
+
+[data-theme="moon-b"] {
+  --bg:       #1E2A4A;
+  --bg2:      #2A3557;
+  --card:     #2B3A5E;
+  --text:     #EDEBF6;   /* 深底浅字 */
+  --muted:    #A9B0CC;
+  --accent:   #F0C46A;   /* 月光金（夜色里更亮一档）*/
+  --accent-d: #D8A344;
+  --blue:     #6E9BD0;
+  --rose:     #3E8E6B;
+  --deco:     #4FAE85;
+  --border:   #3D4A70;
+  --oat:      #263355;
+  --danger:   #D98A8A;
+  --tint:     #3A3F63;
+  --frost:    #232F50;
+  --sh:       5,10,30;
+  --mask:     8,14,35;
+  --bg-top:   #141F42;
+  --bg-grad:
+    /* 月晕 */
+    radial-gradient(circle 100px at 79% 8%, rgba(255,232,170,.26), transparent 70%),
+    /* 繁星 */
+    radial-gradient(circle 1.5px at 18% 7%,  rgba(255,250,225,.85), transparent 100%),
+    radial-gradient(circle 1.5px at 31% 15%, rgba(255,250,225,.65), transparent 100%),
+    radial-gradient(circle 1.5px at 47% 6%,  rgba(255,250,225,.75), transparent 100%),
+    radial-gradient(circle 1.5px at 62% 13%, rgba(255,250,225,.60), transparent 100%),
+    radial-gradient(circle 1.5px at 88% 8%,  rgba(255,250,225,.80), transparent 100%),
+    radial-gradient(circle 1.5px at 93% 21%, rgba(255,250,225,.55), transparent 100%),
+    /* 近处翠绿树林 */
+    radial-gradient(ellipse 55% 15% at 3% 100%,  rgba(38,132,92,.55), transparent 72%),
+    radial-gradient(ellipse 55% 15% at 97% 100%, rgba(38,132,92,.55), transparent 72%),
+    linear-gradient(180deg,
+      #141F42 0%,   /* 蓝调夜空 */
+      #1E2C5A 30%,
+      #33356A 52%,
+      #565078 70%,
+      #7A6A88 80%,  /* 灰紫天边 */
+      #1F6E96 88%,  /* 湛蓝的海 */
+      #1B5648 100%);/* 翠绿树林 */
+}
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html {
@@ -1599,3 +1684,107 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .jr-core > * { flex: 1 1 130px; min-width: 0; }
 .jr-core .field { margin: 0; }
 .jr-core .field label { font-size: .82rem; }
+
+/* ═══════════════════════════════════════════════════════════
+   月湾双主题：闪烁星点 / 满月 FAB / 深色适配（v121）
+   放在文件末尾作为「覆盖层」：所有选择器都带 [data-theme] 限定，
+   不命中现有 6 套主题，因此对它们零影响。
+   ═══════════════════════════════════════════════════════════ */
+
+/* —— 闪烁的星星 ——
+   两层星点错开周期做缓慢明灭；fixed 固定不随内容滚动（天空本就是背景），
+   z-index:0 位于 #app(z-index:1) 之下，只在卡片留白处透出，不干扰阅读、不拦截点击。 */
+@keyframes moonTwinkle {
+  0%, 100% { opacity: .30; }
+  50%      { opacity: .95; }
+}
+[data-theme^="moon-"] body::before,
+[data-theme^="moon-"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+[data-theme^="moon-"] body::before {
+  background-image:
+    radial-gradient(circle 1.6px at 12% 9%,  rgba(255,249,220,.90), transparent 100%),
+    radial-gradient(circle 1.3px at 41% 17%, rgba(255,249,220,.80), transparent 100%),
+    radial-gradient(circle 1.5px at 68% 8%,  rgba(255,249,220,.85), transparent 100%),
+    radial-gradient(circle 1.2px at 85% 19%, rgba(255,249,220,.70), transparent 100%);
+  animation: moonTwinkle 7s ease-in-out infinite;
+}
+[data-theme^="moon-"] body::after {
+  background-image:
+    radial-gradient(circle 1.4px at 26% 13%, rgba(255,249,220,.80), transparent 100%),
+    radial-gradient(circle 1.2px at 57% 11%, rgba(255,249,220,.75), transparent 100%),
+    radial-gradient(circle 1.5px at 94% 6%,  rgba(255,249,220,.85), transparent 100%);
+  animation: moonTwinkle 10.5s ease-in-out infinite 1.8s;
+}
+/* 系统开启「减少动态效果」时保留静态星点，不闪 */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme^="moon-"] body::before,
+  [data-theme^="moon-"] body::after { animation: none; opacity: .7; }
+}
+
+/* —— 满月 FAB：夜色圆盘 + 🌕 + 柔和月晕（两套月湾共用） —— */
+[data-theme^="moon-"] .fab {
+  font-size: 0;
+  color: transparent;
+  background: radial-gradient(circle at 50% 38%, #2C3C6B 0%, #1A2444 78%);
+  box-shadow:
+    0 0 0 1px rgba(246,214,140,.35),
+    0 0 16px 3px rgba(246,214,140,.40),
+    0 4px 14px rgba(10,16,40,.35);
+}
+[data-theme^="moon-"] .fab::after {
+  content: '🌕';
+  font-size: 1.95rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(255,226,150,.75));
+}
+[data-theme^="moon-"] .fab:active {
+  box-shadow:
+    0 0 0 1px rgba(246,214,140,.28),
+    0 0 10px 2px rgba(246,214,140,.30),
+    0 2px 8px rgba(10,16,40,.40);
+}
+
+/* —— 月夜海湾（moon-b）深色适配 ——
+   下列是「规则体里写死的浅色」，不走 CSS 变量，深色下会变成刺眼白块；
+   以及「亮金招牌色底 + 浅色文字」的对比度问题，统一在此修正。 */
+[data-theme="moon-b"] .mini-select {
+  background-color: #2B3A5E;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%23C9C6E8' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  color: var(--text);
+}
+[data-theme="moon-b"] .select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%23C9C6E8' stroke-width='1.6' stroke-linecap='round'/></svg>");
+}
+[data-theme="moon-b"] .input[readonly] {
+  background: rgba(255,255,255,.06);
+  border: 1px dashed var(--border);
+}
+[data-theme="moon-b"] .d-content {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.10);
+  box-shadow: none;
+}
+[data-theme="moon-b"] .mom-card {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,.24);
+}
+[data-theme="moon-b"] .mom-month { color: var(--muted); }
+
+/* 亮金底 → 深色前景（否则 --text 的浅色字压在月光金上几乎看不清） */
+[data-theme="moon-b"] .btn-primary,
+[data-theme="moon-b"] .icon-btn.plus,
+[data-theme="moon-b"] .chip.on,
+[data-theme="moon-b"] .badge.accent,
+[data-theme="moon-b"] .rc-cell.checked,
+[data-theme="moon-b"] .fc-box.checked::after,
+[data-theme="moon-b"] .swipe-btn {
+  color: #2A2110;
+}
