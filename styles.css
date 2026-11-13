@@ -1733,35 +1733,32 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
   [data-theme^="moon-"] body::after { animation: none; opacity: .7; }
 }
 
-/* —— 满月 FAB：明亮月金盘 + 🌕 + 柔和月晕（两套月湾共用） ——
-   v122 修复：原先用 color:transparent 隐藏 JS 生成的「＋」，但 ::after 的 🌕
-   会继承该透明色而被一起抹掉，只剩深蓝近黑圆盘（用户反馈「FAB 是黑的」）。
-   现改为：① font-size:0 单独隐藏「＋」，不再用 color:transparent；
-   ② ::after 显式给不透明前景色，保证彩色 emoji 正常显示；
-   ③ 深蓝夜盘换成明亮月金渐变，既是满月主体的兜底，也彻底不发黑。 */
+/* —— 满月 FAB：只留 🌕 + 沿轮廓散发的软光晕（两套月湾共用） ——
+   v122 曾给 FAB 铺「明亮月金圆盘 + 1px 硬边金环」防发黑，但视觉上变成
+   「黄月亮套在米黄圆盘里」的双环，用户反馈别扭（v124）。
+   现改为：圆盘/硬边/投影全部去掉，背景透明，月亮直接浮在页面背景上，
+   光晕用多层 drop-shadow 沿 emoji 的圆形 alpha 轮廓由内向外渐淡，无硬边。
+   ⚠️ 保留两条 v122 的关键教训：① 只用 font-size:0 藏「＋」，绝不用
+   color:transparent（否则 ::after 的 🌕 会继承透明而被一起抹掉，只剩黑盘）；
+   ② ::after 显式给不透明前景色，保证彩色 emoji 正常显示。 */
 [data-theme^="moon-"] .fab {
   font-size: 0;
-  background:
-    radial-gradient(circle at 34% 28%, rgba(255,255,255,.90) 0%, rgba(255,255,255,0) 46%),
-    radial-gradient(circle at 50% 48%, #FFFDF2 0%, #FFF2C8 48%, #F5D484 82%, #E8BC5E 100%);
-  box-shadow:
-    0 0 0 1px rgba(255,234,166,.85),
-    0 0 20px 6px rgba(255,224,142,.60),
-    0 4px 14px rgba(10,16,40,.30);
+  background: transparent;
+  box-shadow: none;
 }
 [data-theme^="moon-"] .fab::after {
   content: '🌕';
-  font-size: 2.5rem;
+  font-size: 3.15rem;
   line-height: 1;
   color: #FFE9A8;
   -webkit-text-fill-color: #FFE9A8;
-  filter: drop-shadow(0 0 4px rgba(255,216,124,.55));
+  filter:
+    drop-shadow(0 0 5px  rgba(255,226,150,.90))
+    drop-shadow(0 0 14px rgba(255,214,128,.60))
+    drop-shadow(0 0 28px rgba(255,202,110,.34));
 }
 [data-theme^="moon-"] .fab:active {
-  box-shadow:
-    0 0 0 1px rgba(255,234,166,.60),
-    0 0 12px 3px rgba(255,224,142,.45),
-    0 2px 8px rgba(10,16,40,.34);
+  box-shadow: none;   /* 按压反馈由基础 .fab:active 的 scale(.92) 提供 */
 }
 
 /* —— 月夜海湾（moon-b）深色适配 ——
