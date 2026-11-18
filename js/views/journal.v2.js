@@ -161,7 +161,7 @@ async function monthView(rows, nav) {
     /* 按实际天数自适应行数（4~6 行），避免空白行撑高 */
     const totalCells = startOffset + daysInMonth;
     const actualRows = Math.ceil(totalCells / 7);
-    grid.style.gridTemplateRows = `repeat(${actualRows}, 3.4rem)`;
+    grid.style.gridTemplateRows = `repeat(${actualRows}, 5.6rem)`;
 
     const todayStr = todayISO();
 
@@ -188,7 +188,10 @@ async function monthView(rows, nav) {
           ? h('div', { class: 'cal-info' },
               h('span', { class: 'cal-mood' }, entry.mood || '😊'),
               entry.weather ? h('span', { class: 'cal-wx' }, entry.weather) : null,
-              tempLabel(entry) ? h('span', { class: 'cal-temp' }, tempLabel(entry)) : null
+              tempLabel(entry) ? h('span', { class: 'cal-temp' }, tempLabel(entry)) : null,
+              (entry.keywords && entry.keywords.length)
+                ? h('span', { class: 'cal-kw' }, entry.keywords[0])
+                : null
             )
           : null
       );
@@ -214,7 +217,7 @@ async function monthView(rows, nav) {
 
 function tempLabel(r) {
   const mn = r.tempMin, mx = r.tempMax;
-  if (mn && mx) return `${mn}～${mx}℃`;
+  if (mn && mx) return `${mn}/${mx}℃`;
   if (mn && !mx) return `最低${mn}℃`;
   if (!mn && mx) return `最高${mx}℃`;
   if (r.temp) return `${r.temp}℃`;
