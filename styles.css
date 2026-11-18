@@ -1244,7 +1244,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .custom-row .input { flex: 1; }
 
 /* 统计条 */
-.stats { flex: 0 0 auto; display: flex; gap: .5rem; padding: .4rem 1rem .6rem; }
+.stats { flex: 0 0 auto; display: flex; gap: .5rem; padding: .4rem 1rem .35rem; }
 .stat {
   flex: 1; background: color-mix(in srgb, var(--card) 72%, transparent); border-radius: var(--radius-sm);
   padding: .5rem .3rem; text-align: center; box-shadow: var(--shadow);
@@ -1262,7 +1262,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .cal-header {
   flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center; gap: 1rem;
-  padding: .6rem 0 .4rem;
+  padding: .15rem 0 .2rem;
 }
 .cal-title { font-size: 1rem; font-weight: 700; color: var(--text); letter-spacing: .04em; font-family: var(--font-title); }
 .cal-nav {
@@ -1276,7 +1276,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .cal-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 5.6rem); gap: 3px;
   background: transparent; border-radius: var(--radius);
-  padding: 0; margin-top: .15rem;
+  padding: 0; margin-top: .05rem;
 }
 .cal-head {
   text-align: center; font-size: .68rem; font-weight: 600;
@@ -1319,11 +1319,7 @@ header.appbar .rc-title { display: flex; align-items: baseline; gap: .28rem; fon
 .cal-cell.period { background: color-mix(in srgb, var(--period) 46%, transparent); }
 .cal-cell.period:hover, .cal-cell.period:active { background: color-mix(in srgb, var(--period) 66%, transparent); }
 
-.cal-footer {
-  flex: 0 0 auto;
-  display: flex; justify-content: center; gap: 1rem;
-  padding: .5rem 0 .3rem; font-size: .74rem; color: var(--muted);
-}
+.cal-footer { display: none; }
 
 /* ═══════ 左滑操作行 ═══════ */
 /* 操作栏固定宽、常驻在卡片下方（z-index 低于卡片），靠卡片遮挡实现"默认隐藏"；

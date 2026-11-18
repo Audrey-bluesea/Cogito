@@ -197,18 +197,6 @@ async function monthView(rows, nav) {
       );
       grid.appendChild(cell);
     }
-
-    /* 月统计 */
-    const monthKey = `${calYear}-${String(calMonth).padStart(2, '0')}`;
-    const monthEntries = rows.filter(r => (r.date || '').startsWith(monthKey));
-    const moodCounts = {};
-    monthEntries.forEach(r => { const m = r.mood || '😊'; moodCounts[m] = (moodCounts[m] || 0) + 1; });
-    const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
-
-    container.appendChild(h('div', { class: 'cal-footer' },
-      h('span', {}, `本月 ${monthEntries.length} 篇`),
-      topMood ? h('span', {}, `主调 ${topMood[0]} ×${topMood[1]}`) : null
-    ));
   }
 
   renderCal();
